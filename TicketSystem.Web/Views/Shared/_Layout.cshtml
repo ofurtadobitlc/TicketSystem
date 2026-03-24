@@ -23,10 +23,21 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
                     </ul>
+                    <div class="nav-item">
+                        @if (User?.Identity?.IsAuthenticated ?? false)
+                        {
+                            <span>Hallo @User.Identity.Name</span>
+                            <a asp-controller="Account" asp-action="Logout"
+                               class="btn btn-sm btn-outline-dark ms-3">Logout</a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Account" asp-action="Login"
+                               asp-route-returnurl="@ViewContext.HttpContext.Request.Path"
+                               class="btn btn-sm btn-outline-dark">Login</a>
+                        }
+                    </div>
                 </div>
             </div>
         </nav>

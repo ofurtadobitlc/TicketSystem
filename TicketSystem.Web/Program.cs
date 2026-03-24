@@ -1,7 +1,19 @@
+using Microsoft.EntityFrameworkCore;
+using TicketSystem.Web.Models;
+using TicketSystem.Web.Models.Account;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+
+builder.Services.AddDbContext<AppDbContext>(opts =>
+opts.UseSqlServer(builder.Configuration.GetConnectionString("database")));
+
+builder.Services.AddIdentity<AppUser, AppRole>()
+    .AddEntityFrameworkStores<AppDbContext>();
+
 
 var app = builder.Build();
 
@@ -16,6 +28,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -25,5 +38,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+EnsureDatabase.Migrate(app);
+await EnsureDatabase.SeedDefaultAccounts(app);
 
 app.Run();
