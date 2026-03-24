@@ -6,11 +6,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\Project\" />
     <Folder Include="Views\Communication\" />
     <Folder Include="Views\Workflow\" />
     <Folder Include="Views\Ticket\" />
-    <Folder Include="Views\Project\" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TicketSystem.Web.Models.Account;
+using TicketSystem.Web.Models.Project;
 
 namespace TicketSystem.Web.Models
 {
@@ -11,6 +12,9 @@ namespace TicketSystem.Web.Models
                                                 IdentityRoleClaim<string>,
                                                 IdentityUserToken<string>>
     {
+
+
+        public DbSet<ProjectModel> Projects { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> opts) : base(opts) { }
 

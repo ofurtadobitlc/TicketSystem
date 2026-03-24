@@ -1,4 +1,10 @@
 ﻿@{
     ViewData["Title"] = "Admin Panel Page";
 }
-<h1 class="text-center mb-5">Admin Panel</h1>
+<div class="text-center">
+    <h1 class="text-center mb-5">Admin Panel</h1>
+    <div class="d-flex justify-content-center gap-5">
+        <a asp-controller="Project" asp-action="Index" class="btn btn-primary">Manage Projects</a>
+        <a class="btn btn-primary">Manage Users</a>
+    </div>
+</div>
