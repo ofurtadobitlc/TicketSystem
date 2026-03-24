@@ -11,6 +11,9 @@
 
         public DateOnly EndDate { get; set; }
 
+
+        public int WorkflowId { get; set; }
+
         public bool IsFinished { get; set; }
 
         public bool IsDeleted { get; set; }
