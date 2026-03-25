@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +10,6 @@ using TicketSystem.Web.Models.Project;
 
 namespace TicketSystem.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
     public class ProjectController : Controller
     {
         private readonly AppDbContext _context;
@@ -24,7 +22,8 @@ namespace TicketSystem.Web.Controllers
         // GET: Project
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Projects.ToListAsync());
+            var appDbContext = _context.Projects.Include(p => p.Workflow);
+            return View(await appDbContext.ToListAsync());
         }
 
         // GET: Project/Details/5
@@ -36,6 +35,7 @@ namespace TicketSystem.Web.Controllers
             }
 
             var projectModel = await _context.Projects
+                .Include(p => p.Workflow)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (projectModel == null)
             {
@@ -48,6 +48,7 @@ namespace TicketSystem.Web.Controllers
         // GET: Project/Create
         public IActionResult Create()
         {
+            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Id");
             return View();
         }
 
@@ -56,7 +57,7 @@ namespace TicketSystem.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Description,StartDate,EndDate,IsFinished,IsDeleted")] ProjectModel projectModel)
+        public async Task<IActionResult> Create([Bind("Id,Title,Description,StartDate,EndDate,WorkflowId,IsFinished,IsDeleted")] ProjectModel projectModel)
         {
             if (ModelState.IsValid)
             {
@@ -64,6 +65,7 @@ namespace TicketSystem.Web.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Id", projectModel.WorkflowId);
             return View(projectModel);
         }
 
@@ -80,6 +82,7 @@ namespace TicketSystem.Web.Controllers
             {
                 return NotFound();
             }
+            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Id", projectModel.WorkflowId);
             return View(projectModel);
         }
 
@@ -88,7 +91,7 @@ namespace TicketSystem.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,StartDate,EndDate,IsFinished,IsDeleted")] ProjectModel projectModel)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,StartDate,EndDate,WorkflowId,IsFinished,IsDeleted")] ProjectModel projectModel)
         {
             if (id != projectModel.Id)
             {
@@ -115,6 +118,7 @@ namespace TicketSystem.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Id", projectModel.WorkflowId);
             return View(projectModel);
         }
 
@@ -127,6 +131,7 @@ namespace TicketSystem.Web.Controllers
             }
 
             var projectModel = await _context.Projects
+                .Include(p => p.Workflow)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (projectModel == null)
             {
