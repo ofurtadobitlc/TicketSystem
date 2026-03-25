@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using TicketSystem.Web.Models.Project;
 
 namespace TicketSystem.Web.Controllers
 {
+    [Authorize(Roles ="Admin")]
     public class ProjectController : Controller
     {
         private readonly AppDbContext _context;
@@ -46,10 +48,20 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Project/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Id");
-            return View();
+            var workflows = await _context.Workflows.ToListAsync();
+
+            var viewModel = new CreateProjectViewModel
+            {
+                Workflows = workflows.Select(w => new SelectListItem
+                {
+                    Value = w.Id.ToString(),
+                    Text = w.Name
+                })
+            };
+
+            return View(viewModel);
         }
 
         // POST: Project/Create
@@ -57,16 +69,27 @@ namespace TicketSystem.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Description,StartDate,EndDate,WorkflowId,IsFinished,IsDeleted")] ProjectModel projectModel)
+        public async Task<IActionResult> Create(CreateProjectViewModel viewModel)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(projectModel);
+                var project = new ProjectModel
+                {
+                    Title = viewModel.Title,
+                    Description = viewModel.Description,
+                    StartDate = viewModel.StartDate,
+                    EndDate = viewModel.EndDate,
+                    WorkflowId = viewModel.WorkflowId!.Value,
+                    IsDeleted = false,
+                    IsFinished = false
+                };
+                _context.Add(project);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Id", projectModel.WorkflowId);
-            return View(projectModel);
+
+            viewModel.Workflows = new SelectList(_context.Workflows, "Id", "Name", viewModel.WorkflowId);
+            return View(viewModel);
         }
 
         // GET: Project/Edit/5
