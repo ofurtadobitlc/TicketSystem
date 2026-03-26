@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using TicketSystem.Web.Models.Account;
 using TicketSystem.Web.Models.Project;
 
@@ -17,6 +18,7 @@ namespace TicketSystem.Web.Models.Ticket
         public required string CreatorId { get; set; }
 
         public DateTime CreatedAt { get; set; }
+
         [ForeignKey("AppUser")]
         public string? AssigneeId { get; set; }
 
@@ -30,7 +32,9 @@ namespace TicketSystem.Web.Models.Ticket
 
         public AppUser? CreatedBy { get; set; }
         public ProjectModel? Project { get; set; }
+
         public AppUser? Assignee { get; set; }
+        
         public AppUser? ClosedBy { get; set; }
 
         public virtual ICollection<TicketAttachment> Attachments { get; set; } = [];
