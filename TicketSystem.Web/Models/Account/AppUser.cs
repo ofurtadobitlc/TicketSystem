@@ -6,6 +6,9 @@ namespace TicketSystem.Web.Models.Account
 {
     public class AppUser: IdentityUser
     {
+
+        public bool IsActive { get; set; } = true;
+
         public virtual ICollection<AppUserRole> UserRoles { get; set; } = [];
         public virtual ICollection<TicketModel> TicketsCreated { get; set; } = [];
         public virtual ICollection<TicketModel> TicketsAssignedToUser { get; set; } = [];
