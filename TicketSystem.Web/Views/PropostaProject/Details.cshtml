@@ -2,33 +2,36 @@
 @model ProjectBoardViewModel
 
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2>
-                @Model.ProjectTitle
-            </h2>
-            <span class="text-muted">Workflow: @Model.WorkflowName</span>
-            @* Nota: Para usar o EndDate aqui, precisaria de o adicionar ao ProjectBoardViewModel *@
-            @if (Model.EndDate.HasValue)
-            {
-               <span class="text-muted">Ended at: @Model.EndDate</span>    
-            }
-        </div>
-        @if (!Model.EndDate.HasValue)
+    <div>
+        <h2>
+            @Model.ProjectTitle
+        </h2>
+        <span class="text-muted">Workflow: @Model.WorkflowName</span>
+        @* Nota: Para usar o EndDate aqui, precisaria de o adicionar ao ProjectBoardViewModel *@
+        @if (Model.EndDate.HasValue)
         {
-            <div class="d-flex gap-2">
-                <form asp-controller="PropostaProject" asp-action="Close" asp-route-id="@Model.ProjectId" method="post"
-                      onsubmit="return confirm('Tem a certeza que deseja encerrar este projeto? Não será possível adicionar novos tickets.');">
-                    <button type="submit" class="btn btn-outline-danger">
-                        Finish Project
-                    </button>
-                </form>
-
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createTicketModal">
-                    + Novo Ticket
-                </button>
-            </div>
+            <span class="text-muted">Ended at: @Model.EndDate</span>
         }
+    </div>
+    <div class="d-flex justify-content-between align-items-center my-3">
+            <a asp-action="Index" class="btn btn-secondary">Back</a>
+            @if (!Model.EndDate.HasValue)
+            {
+                <div class="d-flex gap-2">
+                    <form asp-controller="PropostaProject" asp-action="Close" asp-route-id="@Model.ProjectId" method="post"
+                          onsubmit="return confirm('Would you like to finish this Project? It will not be possible to add new tickets.');">
+                        <button type="submit" class="btn btn-outline-danger">
+                            Finish Project
+                        </button>
+                    </form>
+
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createTicketModal">
+                        + New Ticket
+                    </button>
+                </div>
+            }
+
+
 
     </div>
 
@@ -104,7 +107,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="createTicketModalLabel">Criar Novo Ticket</h5>
+                    <h5 class="modal-title" id="createTicketModalLabel">Create new ticket</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
             
@@ -113,26 +116,26 @@
                         <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
 
                         <div class="mb-3">
-                            <label for="Title" class="form-label fw-bold">Título do Ticket <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="Title" name="Title" required placeholder="Ex: Erro ao logar no sistema" />
+                            <label for="Title" class="form-label fw-bold">Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="Title" name="Title" required placeholder="Eg: Error to log in" />
                         </div>
 
                         <div class="mb-3">
-                            <label for="Description" class="form-label fw-bold">Descrição <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="Description" name="Description" rows="5" required placeholder="Descreva o problema ou tarefa..."></textarea>
+                            <label for="Description" class="form-label fw-bold">Description<span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="Description" name="Description" rows="5" required placeholder="Describe the problem or task..."></textarea>
                         </div>
 
                         <div class="mb-3">
-                            <label for="AssigneeId" class="form-label fw-bold">Atribuir a</label>
-                            <select class="form-select" id="AssigneeId" name="AssigneeId">
-                                <option value="">Não atribuído (Deixar em aberto)</option>
+                            <label for="AssigneeId" class="form-label fw-bold">Assign to</label>
+                            <select class="form-select" id="AssigneeId" name="AssigneeId" asp-items="Model.UsersList">
+                                <option value="">Not Assigned (leave open)</option>
                             </select>
                         </div>
                     </div>
                 
                     <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Criar Ticket</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
                     </div>
                 </form>
             </div>
@@ -142,7 +145,7 @@
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h6 class="modal-title">Atribuir Ticket #<span id="displayTicketId"></span></h6>
+                    <h6 class="modal-title">Assign Ticket Ticket #<span id="displayTicketId"></span></h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form asp-controller="PropostaTicket" asp-action="Assign" method="post">
@@ -151,14 +154,14 @@
                         <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
                     
                         <div class="mb-3">
-                            <label class="form-label">Selecionar Responsável</label>
+                            <label class="form-label">Select Assignee</label>
                             <select name="AssigneeId" class="form-select" asp-items="Model.UsersList" required>
-                                <option value="">-- Selecione --</option>
+                                <option value="">-- Select --</option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
                     </div>
                 </form>
             </div>

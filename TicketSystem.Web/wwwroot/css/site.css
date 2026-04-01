@@ -29,3 +29,106 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+/* Configuração básica para ocupar a tela toda */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bs-body-bg); /* Suporte a dark mode do Bootstrap 5 */
+    color: var(--bs-body-color);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 250px;
+    background-color: #212529; /* Dark Bootstrap color: #212529 */
+    color: white;
+    transition: width 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+    .sidebar.collapsed {
+        width: 80px;
+    }
+
+    .sidebar .brand-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #343a40;
+    }
+
+    .sidebar .nav-link {
+        color: #adb5bd;
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        white-space: nowrap;
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: #fff;
+            background-color: #343a40;
+        }
+
+        .sidebar .nav-link i {
+            font-size: 1.4rem;
+            min-width: 40px; /* Mantém os ícones alinhados */
+        }
+
+    .sidebar .sidebar-text {
+        transition: opacity 0.3s;
+    }
+
+    .sidebar.collapsed .sidebar-text {
+        opacity: 0;
+        display: none;
+    }
+
+/* ÁREA DE CONTEÚDO (Header + Main) */
+.main-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* TOP HEADER */
+.top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: var(--bs-body-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.content-area {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* AVATAR */
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #0d6efd; /* Primary color */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: pointer;
+}

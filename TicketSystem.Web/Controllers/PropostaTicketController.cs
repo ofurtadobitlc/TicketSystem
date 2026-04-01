@@ -34,7 +34,7 @@ namespace TicketSystem.Web.Controllers
             // Se a validação falhar, redirecionamos de volta para o quadro do projeto com erro
             if (!ModelState.IsValid)
             {
-                TempData["ErrorMessage"] = "Preencha os campos obrigatórios do ticket.";
+                TempData["ErrorMessage"] = "Fill the required fields";
                 return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
             }
 
@@ -48,7 +48,7 @@ namespace TicketSystem.Web.Controllers
             // REGRA DE NEGÓCIO: Bloquear se o projeto estiver encerrado
             if (project.EndDate.HasValue)
             {
-                TempData["ErrorMessage"] = "Não é possível criar tickets num projeto que já foi encerrado.";
+                TempData["ErrorMessage"] = "It is not possible to create ticket on a finished project.";
                 return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
             }
 
@@ -59,7 +59,7 @@ namespace TicketSystem.Web.Controllers
 
             if (project.Workflow == null || !project.Workflow.Statuses.Any())
             {
-                TempData["ErrorMessage"] = "Erro: O projeto não possui um Workflow válido configurado.";
+                TempData["ErrorMessage"] = "Error: The project does not have a valid workflow";
                 return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
             }
 

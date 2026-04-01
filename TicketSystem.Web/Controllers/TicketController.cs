@@ -25,14 +25,73 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Ticket
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(
+            string searchTitle,
+            DateTime? searchDate,
+            string searchCreatedBy,
+            string searchProject,
+            string searchAssignee,
+            string searchStatus)
         {
-            // 1. Captura as informações do usuário logado antes da consulta
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isAdmin = User.IsInRole("Admin"); // Avaliado na memória (C#)
+            var isAdmin = User.IsInRole("Admin");
 
-            // 2. Consulta no banco de dados (sem Include, pois o Select já faz os JOINs necessários)
-            var tickets = await _context.Tickets
+            // --- LÓGICA PARA POPULAR OS SELECTS DOS FILTROS ---
+            // Procuramos apenas os valores que realmente existem na tabela de Tickets
+            ViewBag.ProjectList = await _context.Tickets
+                .Where(t => t.Project != null)
+                .Select(t => t.Project.Title)
+                .Distinct().OrderBy(x => x).ToListAsync();
+
+            ViewBag.CreatedByList = await _context.Tickets
+                .Where(t => t.CreatedBy != null)
+                .Select(t => t.CreatedBy.UserName)
+                .Distinct().OrderBy(x => x).ToListAsync();
+
+            ViewBag.AssigneeList = await _context.Tickets
+                .Where(t => t.Assignee != null)
+                .Select(t => t.Assignee.UserName)
+                .Distinct().OrderBy(x => x).ToListAsync();
+            // ------------------------------------------------
+
+            ViewData["SearchTitle"] = searchTitle;
+            ViewData["SearchDate"] = searchDate?.ToString("yyyy-MM-dd");
+            ViewData["SearchCreatedBy"] = searchCreatedBy;
+            ViewData["SearchProject"] = searchProject;
+            ViewData["SearchAssignee"] = searchAssignee;
+            ViewData["SearchStatus"] = searchStatus;
+
+            var query = _context.Tickets.AsQueryable();
+
+            // Filtros (mantêm-se iguais, mas agora recebem o valor exato do select)
+            if (!string.IsNullOrEmpty(searchTitle))
+                query = query.Where(t => t.Title.Contains(searchTitle));
+
+            if (searchDate.HasValue)
+                query = query.Where(t => t.CreatedAt.Date == searchDate.Value.Date);
+
+            if (!string.IsNullOrEmpty(searchCreatedBy))
+                query = query.Where(t => t.CreatedBy.UserName == searchCreatedBy);
+
+            if (!string.IsNullOrEmpty(searchProject))
+                query = query.Where(t => t.Project.Title == searchProject);
+
+            if (!string.IsNullOrEmpty(searchAssignee))
+                query = query.Where(t => t.Assignee.UserName == searchAssignee);
+
+            if (!string.IsNullOrEmpty(searchStatus))
+            {
+                if (searchStatus != "Open" && searchStatus != "Close")
+                {
+                    query = query.Where(t => t.CurrentStatus != "Open" && t.CurrentStatus != "Close");
+                }
+                else
+                {
+                    query = query.Where(t => t.CurrentStatus == searchStatus);
+                }
+            }
+
+            var tickets = await query
                 .Select(t => new DisplayTicketViewModel
                 {
                     Id = t.Id,
@@ -42,8 +101,6 @@ namespace TicketSystem.Web.Controllers
                     CreatedAt = DateOnly.FromDateTime(t.CreatedAt),
                     Assignee = t.Assignee != null ? t.Assignee.UserName! : "Not Assigned",
                     CurrentStatus = t.CurrentStatus,
-
-                    // Usamos a variável 'isAdmin' em vez de chamar a função do User aqui dentro
                     CanChange = isAdmin || currentUserId == t.CreatorId || currentUserId == t.AssigneeId
                 })
                 .ToListAsync();

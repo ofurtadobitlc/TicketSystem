@@ -23,20 +23,24 @@
 
     <div class="row">
         <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="mb-0">Ticket @Model.Id - @Model.Title</h2>
-                @if(Model.CurrentStatus == "Open")
-                {
-                    <span class="badge bg-primary-subtle fs-6">@Model.CurrentStatus</span>
-                }
-                else if(Model.CurrentStatus == "Close")
-                {
-                    <span class="badge bg-success fs-6">@Model.CurrentStatus</span>
-                }
-                else
-                {
-                    <span class="badge bg-warning fs-6">@Model.CurrentStatus</span>
-                }
+            <h2 class="mb-0">Ticket #@Model.Id - @Model.Title</h2>
+            <div class="d-flex justify-content-between align-items-center my-3">
+                <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-chevron-left"></i> All Tickets</a>
+                <div class="d-flex gap-2">
+                    <a asp-action="Index" class="text-secondary"><i class="bi bi-pencil-fill"></i></a>
+                    @if (Model.CurrentStatus == "Open")
+                    {
+                        <span class="badge bg-primary fs-6">@Model.CurrentStatus</span>
+                    }
+                    else if (Model.CurrentStatus == "Close")
+                    {
+                        <span class="badge bg-success fs-6">@Model.CurrentStatus</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning fs-6">@Model.CurrentStatus</span>
+                    }
+                </div>
 
             </div>
 
@@ -107,9 +111,9 @@
                                 <a asp-controller="PropostaProject"
                                        asp-action="Details"
                                        asp-route-id="@Model.Project?.Id"
-                                       class="btn btn-sm btn-outline-secondary"
+                                       class="text-secondary"
                                        title="See Project">
-                                    <i class="bi bi-eye"></i>
+                                    <i class="bi bi-eye-fill"></i>
                                 </a>
                             </strong>
                         </li>
@@ -120,6 +124,9 @@
                         <li class="mb-2">
                             <span class="text-muted d-block small">Assignee</span>
                             <span>@(Model.AssigneeName ?? "Not assigned")</span>
+                            <a asp-action="Index" class="text-secondary">
+                                <i class="bi bi-pencil-fill"></i>
+                            </a>
                         </li>
                         <li>
                             <span class="text-muted d-block small">Created at</span>
