@@ -2,6 +2,16 @@
 
 namespace TicketSystem.Web.Models.Users
 {
+
+    public class UserManagementViewModel
+    {
+        public IEnumerable<UserListViewModel> Users { get; set; } = [];
+        public CreateUserViewModel CreateForm { get; set; } = new();
+        public EditUserViewModel EditForm { get; set; } = new();
+        public bool ShowCreateModal { get; set; } = false;
+        public bool ShowEditModal { get; set; } = false;
+    }
+
     public class UserListViewModel
     {
         public string Id { get; set; }

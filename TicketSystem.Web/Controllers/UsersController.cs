@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using TicketSystem.Web.Models.Account;
 using TicketSystem.Web.Models.Users;
 
@@ -21,28 +22,11 @@ namespace TicketSystem.Web.Controllers
         // GET: Users
         public async Task<IActionResult> Index()
         {
-            var users = await _userManager.Users.ToListAsync<AppUser>();
-            var userViewModels = new List<UserListViewModel>();
-
-            foreach (var user in users)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                userViewModels.Add(new UserListViewModel
-                {
-                    Id = user.Id,
-                    Name = user.Name,
-                    Username = user.UserName ?? "Unknown",
-                    RoleName = roles.FirstOrDefault() ?? "without role",
-                    IsActive = user.IsActive
-                });
-            }
-            var currentUser = await _userManager.GetUserAsync(User);
-            ViewBag.CurrentUserId = currentUser?.Id;
-
-            return View(userViewModels);
+            var viewModel = await BuildViewModelAsync();
+            return View(viewModel);
         }
 
-        // GET: Users/Create
+        // GET: Users/Create : Not Used - Modal is used instead
         public async Task<IActionResult> Create()
         {
             ViewBag.Roles = new SelectList(await _roleManager.Roles.ToListAsync<AppRole>(), "Id", "Name");
@@ -52,42 +36,39 @@ namespace TicketSystem.Web.Controllers
         // POST: Users/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-
-        public async Task<IActionResult> Create(CreateUserViewModel model)
+        public async Task<IActionResult> Create(CreateUserViewModel CreateForm)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return View("Index", await BuildViewModelAsync(CreateForm, showCreateModal: true));
+
+            var usernameExists = await _userManager.FindByNameAsync(CreateForm.Username);
+            if (usernameExists != null)
             {
-                var usernameExists = await _userManager.FindByNameAsync(model.Username);
-
-                if(usernameExists != null)
-                {
-                    ModelState.AddModelError("Username", "username already exists");
-                    ViewBag.Roles = new SelectList(await _roleManager.Roles.ToListAsync(), "Id", "Name");
-                    return View(model);
-                }
-
-                var user = new AppUser { Name = model.Name, UserName = model.Username, IsActive = model.IsActive };
-                var result = await _userManager.CreateAsync(user, model.Password);
-
-                if (result.Succeeded)
-                {
-                    var role = await _roleManager.FindByIdAsync(model.RoleId);
-                    if (role != null)
-                    {
-                        await _userManager.AddToRoleAsync(user, role.Name);
-                    }
-                    return RedirectToAction(nameof(Index));
-                }
-
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
+                ModelState.AddModelError("CreateForm.Username", "Username already exists");
+                return View("Index", await BuildViewModelAsync(CreateForm, showCreateModal: true));
             }
 
-            // Se falhou, recarrega as roles
-            ViewBag.Roles = new SelectList(await _roleManager.Roles.ToListAsync(), "Id", "Name");
-            return View(model);
+            var user = new AppUser
+            {
+                Name = CreateForm.Name,
+                UserName = CreateForm.Username,
+                IsActive = CreateForm.IsActive
+            };
+
+            var result = await _userManager.CreateAsync(user, CreateForm.Password);
+            if (!result.Succeeded)
+            {
+                foreach (var error in result.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+
+                return View("Index", await BuildViewModelAsync(CreateForm, showCreateModal: true));
+            }
+
+            var role = await _roleManager.FindByIdAsync(CreateForm.RoleId);
+            if (role?.Name != null)
+                await _userManager.AddToRoleAsync(user, role.Name);
+
+            return RedirectToAction(nameof(Index));
         }
 
         // POST: Users/ToggleStatus
@@ -116,75 +97,162 @@ namespace TicketSystem.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: Users/Edit/5
+        // GET: Users/Edit/5 : 
         public async Task<IActionResult> Edit(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
 
             var userRoles = await _userManager.GetRolesAsync(user);
-            var role = await _roleManager.Roles.FirstOrDefaultAsync(r => r.Name == userRoles.FirstOrDefault());
+            
 
-            var model = new EditUserViewModel
+            var editForm = new EditUserViewModel
             {
                 Id = user.Id,
                 Name = user.Name,
-                Username = user.UserName,
+                Username = user.UserName ?? string.Empty,
                 IsActive = user.IsActive,
-                RoleId = role?.Id
+                RoleId = (await _roleManager.FindByNameAsync(userRoles.FirstOrDefault() ?? string.Empty))?.Id ?? string.Empty,
             };
+
+            var viewModel = await BuildViewModelAsync(editForm: editForm, showEditModal: true);
 
             var currentUser = await _userManager.GetUserAsync(User);
             ViewBag.CurrentUserId = currentUser.Id;
 
-            ViewBag.Roles = new SelectList(_roleManager.Roles.ToList(), "Id", "Name", role?.Id);
-            return View(model);
+            return View("Index", viewModel);
         }
 
         // POST: Users/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(EditUserViewModel model)
+        public async Task<IActionResult> Edit(EditUserViewModel EditForm)
         {
             var currentUser = await _userManager.GetUserAsync(User);
 
-            if (model.Id == currentUser?.Id)
+            if (!ModelState.IsValid)
+            {
+                ViewBag.CurrentUserId = currentUser.Id;
+                return View("Index", await BuildViewModelAsync(editForm: EditForm, showEditModal: true));
+            }
+
+            var user = await _userManager.FindByIdAsync(EditForm.Id);
+
+            if (user == null) return NotFound();
+
+            // Check username conflict (excluding the current user)
+            var usernameExists = await _userManager.FindByNameAsync(EditForm.Username);
+            if (usernameExists != null && usernameExists.Id != EditForm.Id)
+            {
+                ModelState.AddModelError("EditForm.Username", "Username already exists");
+                return View("Index", await BuildViewModelAsync(editForm: EditForm, showEditModal: true));
+            }
+
+            if (EditForm.Id == currentUser?.Id)
             {
                 ModelState.Remove("RoleId");
                 ModelState.Remove("IsActive"); 
             }
 
-
-            if (!ModelState.IsValid)
-            {
-                ViewBag.Roles = new SelectList(_roleManager.Roles.ToList(), "Id", "Name", model.RoleId);
-                ViewBag.CurrentUserId = currentUser.Id;
-                return View(model);
-            }
-
-            var user = await _userManager.FindByIdAsync(model.Id);
-            
-            if (user == null) return NotFound();
-
-            // Atualiza dados básicos
-            user.Name = model.Name;
-            user.UserName = model.Username;
+            // Update User Properties
+            user.Name = EditForm.Name;
+            user.UserName = EditForm.Username;
 
             if (user.Id != currentUser.Id)
             {
-                user.IsActive = model.IsActive;
+                user.IsActive = EditForm.IsActive;
+            }
 
+            var updateResult = await _userManager.UpdateAsync(user);
+
+            if (!updateResult.Succeeded)
+            {
+                foreach (var error in updateResult.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+
+                return View("Index", await BuildViewModelAsync(editForm: EditForm, showEditModal: true));
+            }
+
+            // Update User Roles
+
+            if (user.Id != currentUser.Id)
+            {
                 var currentRoles = await _userManager.GetRolesAsync(user);
                 await _userManager.RemoveFromRolesAsync(user, currentRoles);
-
-                if (!string.IsNullOrEmpty(model.RoleId))
-                {
-                    var newRole = await _roleManager.FindByIdAsync(model.RoleId);
-                    if (newRole != null) await _userManager.AddToRoleAsync(user, newRole.Name);
-                }
+                var newRole = await _roleManager.FindByIdAsync(EditForm.RoleId);
+                if (newRole?.Name != null)
+                    await _userManager.AddToRoleAsync(user, newRole.Name);
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+
+        // Reusable methods
+        // Get All Users:
+        private async Task<List<UserListViewModel>> GetUserListAsync()
+        {
+            var users = await _userManager.Users.ToListAsync<AppUser>();
+            var userViewModels = new List<UserListViewModel>();
+
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userViewModels.Add(new UserListViewModel
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    Username = user.UserName ?? "Unknown",
+                    RoleName = roles.FirstOrDefault() ?? "without role",
+                    IsActive = user.IsActive
+                });
+            }
+
+            return userViewModels;
+        }
+
+        private async Task PrepareIndexViewBagAsync()
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            ViewBag.CurrentUserId = currentUser?.Id;
+            ViewBag.Roles = new SelectList(await _roleManager.Roles.ToListAsync(), "Id", "Name");
+            ViewBag.ShowCreateModal = true;
+        }
+
+        private async Task<UserManagementViewModel> BuildViewModelAsync(
+                                                        CreateUserViewModel? createForm = null,
+                                                        EditUserViewModel? editForm = null,
+                                                        bool showCreateModal = false,
+                                                        bool showEditModal = false)
+        {
+            var users = await _userManager.Users.ToListAsync<AppUser>();
+            var userViewModels = new List<UserListViewModel>();
+
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userViewModels.Add(new UserListViewModel
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    Username = user.UserName ?? "Unknown",
+                    RoleName = roles.FirstOrDefault() ?? "Without role",
+                    IsActive = user.IsActive
+                });
+            }
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            ViewBag.CurrentUserId = currentUser?.Id;
+            ViewBag.Roles = new SelectList(await _roleManager.Roles.ToListAsync(), "Id", "Name");
+
+            return new UserManagementViewModel
+            {
+                Users = userViewModels,
+                CreateForm = createForm ?? new CreateUserViewModel(),
+                EditForm = editForm ?? new EditUserViewModel(),
+                ShowCreateModal = showCreateModal,
+                ShowEditModal = showEditModal
+            };
         }
 
     }

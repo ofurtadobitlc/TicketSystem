@@ -16,21 +16,21 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 2. Theme Toggle (Light/Dark mode do Bootstrap 5)
-    const themeToggle = document.getElementById("themeToggle");
-    const themeIcon = document.getElementById("themeIcon");
-    const htmlElement = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
 
-    if (themeToggle) {
-        themeToggle.addEventListener("click", function () {
-            const currentTheme = htmlElement.getAttribute("data-bs-theme");
-            if (currentTheme === "dark") {
-                htmlElement.setAttribute("data-bs-theme", "light");
-                themeIcon.classList.replace("bi-sun", "bi-moon");
-            } else {
-                htmlElement.setAttribute("data-bs-theme", "dark");
-                themeIcon.classList.replace("bi-moon", "bi-sun");
-            }
-        });
-    }
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-bs-theme', theme);
+    themeIcon.className = theme === 'dark' ? 'bi bi-sun fs-5' : 'bi bi-moon fs-5';
+    localStorage.setItem('theme', theme);
+}
+
+    // Sync icon with current theme on load
+    applyTheme(localStorage.getItem('theme') || 'light');
+
+    themeToggle.addEventListener('click', () => {
+        const newTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark'
+        ? 'light' : 'dark';
+        applyTheme(newTheme);
+});
 });

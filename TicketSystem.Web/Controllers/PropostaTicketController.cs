@@ -29,7 +29,7 @@ namespace TicketSystem.Web.Controllers
         // POST: Ticket/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(TicketCreateViewModel model)
+        public async Task<IActionResult> Create(Models.Project.Proposta.TicketCreateViewModel model)
         {
             // Se a validação falhar, redirecionamos de volta para o quadro do projeto com erro
             if (!ModelState.IsValid)

@@ -25,73 +25,19 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Ticket
-        public async Task<IActionResult> Index(
-            string searchTitle,
-            DateTime? searchDate,
-            string searchCreatedBy,
-            string searchProject,
-            string searchAssignee,
-            string searchStatus)
+        public async Task<IActionResult> Index(TicketFilterViewModel model)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("Admin");
 
-            // --- LÓGICA PARA POPULAR OS SELECTS DOS FILTROS ---
-            // Procuramos apenas os valores que realmente existem na tabela de Tickets
-            ViewBag.ProjectList = await _context.Tickets
-                .Where(t => t.Project != null)
-                .Select(t => t.Project.Title)
-                .Distinct().OrderBy(x => x).ToListAsync();
+            // Build the Query
+            var query = _context.Tickets.AsNoTracking().AsQueryable();
 
-            ViewBag.CreatedByList = await _context.Tickets
-                .Where(t => t.CreatedBy != null)
-                .Select(t => t.CreatedBy.UserName)
-                .Distinct().OrderBy(x => x).ToListAsync();
+            // Apply Filters
+            query = ApplyFilters(query, model);
 
-            ViewBag.AssigneeList = await _context.Tickets
-                .Where(t => t.Assignee != null)
-                .Select(t => t.Assignee.UserName)
-                .Distinct().OrderBy(x => x).ToListAsync();
-            // ------------------------------------------------
-
-            ViewData["SearchTitle"] = searchTitle;
-            ViewData["SearchDate"] = searchDate?.ToString("yyyy-MM-dd");
-            ViewData["SearchCreatedBy"] = searchCreatedBy;
-            ViewData["SearchProject"] = searchProject;
-            ViewData["SearchAssignee"] = searchAssignee;
-            ViewData["SearchStatus"] = searchStatus;
-
-            var query = _context.Tickets.AsQueryable();
-
-            // Filtros (mantêm-se iguais, mas agora recebem o valor exato do select)
-            if (!string.IsNullOrEmpty(searchTitle))
-                query = query.Where(t => t.Title.Contains(searchTitle));
-
-            if (searchDate.HasValue)
-                query = query.Where(t => t.CreatedAt.Date == searchDate.Value.Date);
-
-            if (!string.IsNullOrEmpty(searchCreatedBy))
-                query = query.Where(t => t.CreatedBy.UserName == searchCreatedBy);
-
-            if (!string.IsNullOrEmpty(searchProject))
-                query = query.Where(t => t.Project.Title == searchProject);
-
-            if (!string.IsNullOrEmpty(searchAssignee))
-                query = query.Where(t => t.Assignee.UserName == searchAssignee);
-
-            if (!string.IsNullOrEmpty(searchStatus))
-            {
-                if (searchStatus != "Open" && searchStatus != "Close")
-                {
-                    query = query.Where(t => t.CurrentStatus != "Open" && t.CurrentStatus != "Close");
-                }
-                else
-                {
-                    query = query.Where(t => t.CurrentStatus == searchStatus);
-                }
-            }
-
-            var tickets = await query
+            // To ViewModel
+            model.Tickets = await query
                 .Select(t => new DisplayTicketViewModel
                 {
                     Id = t.Id,
@@ -101,11 +47,17 @@ namespace TicketSystem.Web.Controllers
                     CreatedAt = DateOnly.FromDateTime(t.CreatedAt),
                     Assignee = t.Assignee != null ? t.Assignee.UserName! : "Not Assigned",
                     CurrentStatus = t.CurrentStatus,
+                    // Logic handled at the DB level
                     CanChange = isAdmin || currentUserId == t.CreatorId || currentUserId == t.AssigneeId
                 })
                 .ToListAsync();
 
-            return View(tickets);
+            // Populate Dropdowns (Ideally cached or loaded more efficiently)
+            model.ProjectList = await _context.Projects.Select(p => p.Title).OrderBy(t => t).ToListAsync();
+            model.CreatedByList = await _context.Users.Select(u => u.UserName ?? "No Username").OrderBy(t => t).ToListAsync();
+            model.AssigneeList = model.CreatedByList; 
+
+            return View(model);
         }
 
         // GET: Ticket/Details/5
@@ -451,5 +403,43 @@ namespace TicketSystem.Web.Controllers
         {
             return _context.Tickets.Any(e => e.Id == id);
         }
+
+       
+        private IQueryable<TicketModel> ApplyFilters(IQueryable<TicketModel> query, TicketFilterViewModel model)
+        {
+            if (!string.IsNullOrWhiteSpace(model.SearchTitle))
+                query = query.Where(t => t.Title.Contains(model.SearchTitle));
+
+            if (model.SearchDate.HasValue)
+                query = query.Where(t => t.CreatedAt.Date == model.SearchDate.Value.Date);
+
+            if (!string.IsNullOrWhiteSpace(model.SearchStatus))
+            {
+                query = model.SearchStatus switch
+                {
+                    "Open" => query.Where(t => t.CurrentStatus == "Open"),
+                    "Close" => query.Where(t => t.CurrentStatus == "Close"),
+                    _ => query.Where(t => t.CurrentStatus != "Open" && t.CurrentStatus != "Close")
+                };
+            }
+            if (!string.IsNullOrEmpty(model.SearchTitle))
+                query = query.Where(t => t.Title.Contains(model.SearchTitle));
+
+            if (model.SearchDate.HasValue)
+                query = query.Where(t => t.CreatedAt.Date == model.SearchDate.Value.Date);
+
+            if (!string.IsNullOrEmpty(model.SearchCreatedBy))
+                query = query.Where(t => t.CreatedBy.UserName == model.SearchCreatedBy);
+
+            if (!string.IsNullOrEmpty(model.SearchProject))
+                query = query.Where(t => t.Project.Title == model.SearchProject);
+
+            if (!string.IsNullOrEmpty(model.SearchAssignee))
+                query = query.Where(t => t.Assignee.UserName == model.SearchAssignee);
+            
+            return query;
+        }
+
+
     }
 }

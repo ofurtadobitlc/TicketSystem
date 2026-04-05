@@ -38,6 +38,12 @@ namespace TicketSystem.Web.Controllers
                 AppUser? user = await _userManager.FindByNameAsync(model.Username);
                 if (user != null)
                 {
+                    if (!user.IsActive)
+                    {
+                        ModelState.AddModelError("", "Your account is inactiv. Please contact the Admin");
+                        return View(model);
+                    }
+
                     await _signInManager.SignOutAsync();
                     var result = await _signInManager.PasswordSignInAsync(
                     user, model.Password, false, false);
