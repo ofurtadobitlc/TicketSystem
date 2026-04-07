@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using TicketSystem.Web.Models.Project;
 
-namespace TicketSystem.Web.Models.Ticket
+namespace TicketSystem.Web.Models.Ticket.ViewModels
 {
     public class TicketDetailsViewModel
     {

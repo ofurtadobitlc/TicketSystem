@@ -75,18 +75,19 @@ namespace TicketSystem.Web.Models
 
 
             // TicketDependency
+            // 1. Chave Composta
             modelBuilder.Entity<TicketDependency>()
                 .HasKey(td => new { td.BlockedTicketId, td.BlockingTicketId });
 
             modelBuilder.Entity<TicketDependency>()
                 .HasOne(td => td.BlockedTicket)
-                .WithMany(t => t.BlockingTickets)
+                .WithMany(t => t.BlockedByTickets)
                 .HasForeignKey(td => td.BlockedTicketId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<TicketDependency>()
                 .HasOne(td => td.BlockingTicket)
-                .WithMany(t => t.BlockedByTickets)
+                .WithMany(t => t.BlockingTickets) 
                 .HasForeignKey(td => td.BlockingTicketId)
                 .OnDelete(DeleteBehavior.Restrict);
 

@@ -1,4 +1,4 @@
-﻿namespace TicketSystem.Web.Models.Ticket
+﻿namespace TicketSystem.Web.Models.Ticket.ViewModels
 {
     public class TicketFilterViewModel
     {
@@ -16,6 +16,6 @@
         public List<string> AssigneeList { get; set; } = new();
 
         // Results
-        public List<DisplayTicketViewModel> Tickets { get; set; } = new();
+        public List<TicketListViewModel> Tickets { get; set; } = new();
     }
 }

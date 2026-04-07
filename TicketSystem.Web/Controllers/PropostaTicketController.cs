@@ -38,6 +38,7 @@ namespace TicketSystem.Web.Controllers
                 return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
             }
 
+            // TODO: Dont need to take Workflow and Statuses, All tickets starts with 'Open'
             var project = await _context.Projects
                                         .Include(p => p.Workflow)
                                         .ThenInclude(w => w.Statuses)
@@ -52,7 +53,7 @@ namespace TicketSystem.Web.Controllers
                 return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
             }
 
-            // 1. Pega o usuário logado
+            // 1. Pega o usuário logado:   TODO: Add Attribute Authorize.
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser == null) return Unauthorized();
 

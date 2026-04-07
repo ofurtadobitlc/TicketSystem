@@ -1,194 +1,248 @@
-﻿@using TicketSystem.Web.Models.Ticket
+﻿@using TicketSystem.Web.Models.Ticket.ViewModels
 @model TicketDetailsViewModel
 
 @{
     ViewData["Title"] = "Ticket - " + Model.Title;
 }
 
-<div class="container mt-4">
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            @TempData["SuccessMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            @TempData["ErrorMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
+<div class="container mt-1">
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-success"><i class="bi bi-chevron-left"></i> All</a>
+        <h4 class="mb-0">Ticket #@Model.Id - @Model.Title</h4>
+    </div>
+    <ul class="nav nav-tabs mt-2" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Home</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="false" onclick="loadDependencies()">
+                Dependencies
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact" type="button" role="tab" aria-controls="contact" aria-selected="false">Attachments</button>
+        </li>
+    </ul>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <h2 class="mb-0">Ticket #@Model.Id - @Model.Title</h2>
-            <div class="d-flex justify-content-between align-items-center my-3">
-                <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-chevron-left"></i> All Tickets</a>
-                <div class="d-flex gap-2">
-                    <a asp-action="Index" class="text-secondary"><i class="bi bi-pencil-fill"></i></a>
-                    @if (Model.CurrentStatus == "Open")
-                    {
-                        <span class="badge bg-primary fs-6">@Model.CurrentStatus</span>
-                    }
-                    else if (Model.CurrentStatus == "Close")
-                    {
-                        <span class="badge bg-success fs-6">@Model.CurrentStatus</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-warning fs-6">@Model.CurrentStatus</span>
-                    }
-                </div>
-
-            </div>
-
-            <div class="card mb-4 shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title text-muted border-bottom pb-2">Description</h5>
-                    <p class="card-text mt-3" style="white-space: pre-wrap;">@Model.Description</p>
-                </div>
-            </div>
-
-            <hr class="my-4" />
-
-            <h4 id="comments" class="mb-3">Comments (@Model.Comments.Count)</h4>
-
-            <div class="comments-list mb-4">
-                @if (Model.Comments.Any())
-                {
-                    foreach (var comment in Model.Comments)
-                    {
-                        <div class="card mb-3 shadow-sm border-0 bg-light">
-                            <div class="card-body py-2 px-3">
-                                <div class="d-flex justify-content-between text-muted small mb-2 border-bottom pb-1">
-                                    <strong>@comment.CreatorName</strong>
-                                    <span>@comment.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
-                                </div>
-                                <p class="mb-1" style="white-space: pre-wrap;">@comment.Content</p>
-                            </div>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <p class="text-muted fst-italic">There are not comments yet</p>
-                }
-            </div>
-
-            <div class="card shadow-sm border-primary border-opacity-25">
-                <div class="card-body">
-                    <h5 class="card-title">Add Comment</h5>
-                    <form asp-action="AddComment" method="post">
-                        <input type="hidden" name="TicketId" value="@Model.Id" />
-    
-                        <div class="form-group mb-3">
-                            <textarea name="Content" class="form-control" rows="3" placeholder="Write your Commment here..." required></textarea>
-                        </div>
-                        <div class="text-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-chat-text"></i> Comment
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4 mt-4 mt-lg-0">
-            
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-light-subtle">
-                    <h5 class="mb-0">Details</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li class="mb-2">
-                            <span class="text-muted d-block small">Project</span>
-                            <strong>
-                                @Model.Project?.Title
-                                <a asp-controller="PropostaProject"
-                                       asp-action="Details"
-                                       asp-route-id="@Model.Project?.Id"
-                                       class="text-secondary"
-                                       title="See Project">
-                                    <i class="bi bi-eye-fill"></i>
-                                </a>
-                            </strong>
-                        </li>
-                        <li class="mb-2">
-                            <span class="text-muted d-block small">Created By</span>
-                            <span>@Model.CreatorName</span>
-                        </li>
-                        <li class="mb-2">
-                            <span class="text-muted d-block small">Assignee</span>
-                            <span>@(Model.AssigneeName ?? "Not assigned")</span>
-                            <a asp-action="Index" class="text-secondary">
-                                <i class="bi bi-pencil-fill"></i>
-                            </a>
-                        </li>
-                        <li>
-                            <span class="text-muted d-block small">Created at</span>
-                            <span>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="card shadow-sm">
-                <div class="card-header bg-light-subtle d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Attachments</h5>
-                    <span class="badge bg-secondary">@Model.Attachments.Count</span>
-                </div>
-                <div class="card-body">
-                    
-                    @if (Model.Attachments.Any())
-                    {
-                        <ul class="list-group list-group-flush mb-3">
-                            @foreach (var attachment in Model.Attachments)
+    <div class="tab-content mt-3" id="myTabContent">
+        <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="d-flex justify-content-end align-items-center my-3">
+                        <div class="d-flex gap-2">
+                            <a asp-action="Index" class="text-secondary"><i class="bi bi-pencil-fill"></i></a>
+                            @if (Model.CurrentStatus == "Open")
                             {
-                                var displayName = attachment.Filename.Contains('_')
-                                    ? attachment.Filename.Substring(attachment.Filename.IndexOf('_') + 1)
-                                    : attachment.Filename;
+                                <span class="badge bg-primary">@Model.CurrentStatus</span>
+                            }
+                            else if (Model.CurrentStatus == "Close")
+                            {
+                                <span class="badge bg-success">@Model.CurrentStatus</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">@Model.CurrentStatus</span>
+                            }
+                        </div>
+                    </div>
 
-                                <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-                                    <div class="text-truncate me-2" title="@displayName">
-                                        <i class="bi bi-paperclip text-muted"></i>
-                                        <small>@displayName</small>
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header bg-light-subtle">
+                            <h5 class="mb-0">Description</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text mt-3" style="white-space: pre-wrap;">@Model.Description</p>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h4 id="comments" class="mb-3">Comments (@Model.Comments.Count)</h4>
+
+                    <div class="comments-list mb-4">
+                        @if (Model.Comments.Any())
+                        {
+                            foreach (var comment in Model.Comments)
+                            {
+                                <div class="card mb-3 shadow-sm border-0 bg-light">
+                                    <div class="card-body py-2 px-3">
+                                        <div class="d-flex justify-content-between text-muted small mb-2 border-bottom pb-1">
+                                            <strong>@comment.CreatorName</strong>
+                                            <span>@comment.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                                        </div>
+                                        <p class="mb-1" style="white-space: pre-wrap;">@comment.Content</p>
                                     </div>
-                                    <a asp-action="DownloadAttachment" asp-route-id="@attachment.Id" class="btn btn-sm btn-outline-secondary" title="Baixar">
-                                        ⬇️
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted fst-italic">There are not comments yet</p>
+                        }
+                    </div>
+
+                    <div class="card shadow-sm border-primary border-opacity-25">
+                        <div class="card-body">
+                            <h5 class="card-title">Add Comment</h5>
+                            <form asp-action="AddComment" method="post">
+                                <input type="hidden" name="TicketId" value="@Model.Id" />
+    
+                                <div class="form-group mb-3">
+                                    <textarea name="Content" class="form-control" rows="3" placeholder="Write your Commment here..." required></textarea>
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-chat-text"></i> Comment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mt-4 mt-lg-0">
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header bg-light-subtle">
+                            <h5 class="mb-0">Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2">
+                                    <span class="text-muted d-block small">Project</span>                     
+                                    <a asp-controller="PropostaProject"
+                                            asp-action="Details"
+                                            asp-route-id="@Model.Project?.Id"
+                                            class="text-decoration-none"
+                                            title="See Project">
+                                        @Model.Project?.Title
                                     </a>
                                 </li>
-                            }
-                        </ul>
-                    }
-                    else
-                    {
-                        <p class="text-muted small fst-italic">There are no files attached yet.</p>
-                    }
-
-                    <hr />
-
-                    <form asp-action="UploadAttachment" method="post" enctype="multipart/form-data">
-                        <input type="hidden" name="TicketId" value="@Model.Id" />
-                        
-                        <div class="mb-2">
-                            <label class="form-label small text-muted">Attach new file</label>
-                            <input class="form-control form-control-sm" type="file" name="File" required />
+                                <li class="mb-2">
+                                    <span class="text-muted d-block small">Created By</span>
+                                    <span>@Model.CreatorName</span>
+                                </li>
+                                <li class="mb-2">
+                                    <span class="text-muted d-block small">Assignee</span>
+                                    <span>@(Model.AssigneeName ?? "Not assigned")</span>
+                                    <a asp-action="Index" class="text-secondary">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
+                                </li>
+                                <li>
+                                    <span class="text-muted d-block small">Created at</span>
+                                    <span>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                                </li>
+                            </ul>
                         </div>
-                        <button type="submit" class="btn btn-sm btn-success w-100">
-                            Upload
-                        </button>
-                    </form>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light-subtle d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Attachments</h5>
+                            <span class="badge bg-secondary">@Model.Attachments.Count</span>
+                        </div>
+                        <div class="card-body">
+                    
+                            @if (Model.Attachments.Any())
+                            {
+                                <ul class="list-group list-group-flush mb-3">
+                                    @foreach (var attachment in Model.Attachments)
+                                    {
+                                        var displayName = attachment.Filename.Contains('_')
+                                            ? attachment.Filename.Substring(attachment.Filename.IndexOf('_') + 1)
+                                            : attachment.Filename;
+
+                                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                            <div class="text-truncate me-2" title="@displayName">
+                                                <i class="bi bi-paperclip text-muted"></i>
+                                                <small>@displayName</small>
+                                            </div>
+                                            <a asp-action="DownloadAttachment" asp-route-id="@attachment.Id" class="btn btn-sm btn-outline-secondary" title="Baixar">
+                                                ⬇️
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="text-muted small fst-italic">There are no files attached yet.</p>
+                            }
+
+                            <hr />
+
+                            <form asp-action="UploadAttachment" method="post" enctype="multipart/form-data">
+                                <input type="hidden" name="TicketId" value="@Model.Id" />
+                        
+                                <div class="mb-2">
+                                    <label class="form-label small text-muted">Attach new file</label>
+                                    <input class="form-control form-control-sm" type="file" name="File" required />
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                    Upload
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
-
+        </div>
+        <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+            <div id="dependencies-container" class="mt-3">
+                <div class="text-center text-muted p-4">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <p>Loading Dependencies...</p>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
+            <h2 class="mb-3">Attachment</h2>
+            <p class="lead">Here are the attachments</p>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        let isDependenciesLoaded = false;
+
+        function loadDependencies() {
+            if (isDependenciesLoaded) return;
+
+            const ticketId = @Model.Id;
+
+            // Call Get to fetch the partial view HTML
+            $.get(`/Ticket/AddDependencyPartial?ticketId=${ticketId}`, function (htmlData) {
+                
+                $('#dependencies-container').html(htmlData);
+                
+                // set as Loaded
+                isDependenciesLoaded = true;
+
+                if ($.fn.select2) {
+                    $('.searchable-select').select2({
+                        placeholder: "search by id or title...",
+                        allowClear: true,
+                        width: '100%',
+                        language: "pt-BR"
+                    });
+                }
+
+                const form = document.getElementById('formAddDependency');
+                if (form) {
+                    form.addEventListener('submit', function() {
+                        const btn = document.getElementById('btnSubmitDependency');
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+                        btn.disabled = true;
+                    });
+                }
+
+            }).fail(function () {
+                $('#dependencies-container').html(`
+                    <div class="alert alert-danger mt-3" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> Error by adding dependency. Try to refresh the Page.
+                    </div>
+                `);
+            });
+        }
+    </script>
 }

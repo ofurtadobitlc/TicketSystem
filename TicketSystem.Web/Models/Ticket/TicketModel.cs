@@ -9,7 +9,6 @@ namespace TicketSystem.Web.Models.Ticket
     {
         public int Id { get; set; }
         public required string Title { get; set; }
-
         public required string Description { get; set; }
         [ForeignKey("ProjectModel")]
         public int ProjectId { get; set; }
@@ -42,7 +41,5 @@ namespace TicketSystem.Web.Models.Ticket
 
         public virtual ICollection<TicketDependency> BlockedByTickets { get; set; } = [];
         public virtual ICollection<TicketDependency> BlockingTickets { get; set; } = [];
-
-
     }
 }

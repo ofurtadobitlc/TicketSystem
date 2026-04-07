@@ -1,15 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using TicketSystem.Web.Models;
-using TicketSystem.Web.Models.Project;
 using TicketSystem.Web.Models.Ticket;
+using TicketSystem.Web.Models.Ticket.ViewModels;
 
 namespace TicketSystem.Web.Controllers
 {
@@ -38,7 +34,7 @@ namespace TicketSystem.Web.Controllers
 
             // To ViewModel
             model.Tickets = await query
-                .Select(t => new DisplayTicketViewModel
+                .Select(t => new TicketListViewModel
                 {
                     Id = t.Id,
                     Title = t.Title,
@@ -222,13 +218,15 @@ namespace TicketSystem.Web.Controllers
             return File(fileBytes, "application/octet-stream", originalFileName);
         }
 
-        // GET: Ticket/Create
+
+
+        // GET: Ticket/Create : TODO : Not Used
         public async Task<IActionResult> Create()
         {
             var users = await _context.Users.ToListAsync();
             var projects = await _context.Projects.ToListAsync();
 
-            var viewModel = new CreateTicketViewModel
+            var viewModel = new TicketCreateViewModel
             {
                 Projects = projects.Select(p => new SelectListItem
                 {
@@ -244,54 +242,70 @@ namespace TicketSystem.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(CreateTicketViewModel viewModel)
+        public async Task<IActionResult> Create(TicketCreateViewModel viewModel)
         {
+            if (!ModelState.IsValid)
+            {
+                // If validation fails, repopulate lists and return the partial view with errors
+                viewModel.Projects = await _context.Projects.Select(p => new SelectListItem { Value = p.Id.ToString(), Text = p.Title }).ToListAsync();
+                viewModel.UsersList = await _context.Users.Select(u => new SelectListItem { Value = u.Id, Text = u.UserName }).ToListAsync();
+
+                return PartialView("_CreateTicketModalPartial", viewModel);
+            }
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
             {
                 return NotFound();
             }
 
-            var projects = await _context.Projects.FindAsync(viewModel.ProjectId);
-            if (projects == null)
+            var project = await _context.Projects.FindAsync(viewModel.ProjectId);
+            if (project == null)
             {
                 return NotFound();
             }
 
-            
-            /* TO MOVE
-            var workflowStatuses = await _context.WorkflowStatuses.ToListAsync();
-
-            var wfStatusProject = workflowStatuses.Where(w => w.WorkflowId == projects.WorkflowId);
-
-            string firstStatus = wfStatusProject.Where(s => s.IsInicial).Select(s => s.Name).ToList()[0];*/
-
-
-            if (ModelState.IsValid)
+            if (project.EndDate.HasValue)
             {
-                
-
-                var ticket = new TicketModel
-                {
-                    Title = viewModel.Title,
-                    Description = viewModel.Description,
-                    ProjectId = viewModel.ProjectId,
-                    CreatorId = userId,
-                    CreatedAt = DateTime.Now,
-                    CurrentStatus = "Open"
-                };
-
-                _context.Add(ticket);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return Unauthorized("Cannot create a ticket for a project that has already ended.");
             }
 
-            viewModel.Projects = new SelectList(_context.Projects, "Id", "Title", viewModel.ProjectId);
+            var ticket = new TicketModel
+            {
+                Title = viewModel.Title,
+                Description = viewModel.Description,
+                ProjectId = viewModel.ProjectId,
+                AssigneeId = viewModel.AssigneeId,
+                CreatorId = userId,
+                CreatedAt = DateTime.Now,
+                CurrentStatus = "Open"
+            };
 
-            return View(viewModel);
+            _context.Add(ticket);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
         }
 
-        // GET: Ticket/Edit/5
+
+        // CREATE PARTIAL: Fetches the Create Form to put inside the Modal
+        public async Task<IActionResult> CreatePartial()
+        {
+            var model = new TicketCreateViewModel
+            {
+                // Populate dropdowns for the modal
+                Projects = await _context.Projects
+                    .Select(p => new SelectListItem { Value = p.Id.ToString(), Text = p.Title })
+                    .ToListAsync(),
+
+                UsersList = await _context.Users
+                    .Select(u => new SelectListItem { Value = u.Id, Text = u.UserName })
+                    .ToListAsync()
+            };
+
+            return PartialView("_CreateTicketModalPartial", model);
+        }
+
+        // GET: Ticket/Edit/5 : TODO : Not Used
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -316,11 +330,15 @@ namespace TicketSystem.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Description,AssigneeId")] TicketModel ticketModel)
+        public async Task<IActionResult> Edit(int id, TicketEditViewModel viewModel)
         {
-            if (id != ticketModel.Id)
+            // Check Ticket
+            if (id != viewModel.Id) return NotFound();
+
+            if (!ModelState.IsValid)
             {
-                return NotFound();
+                await PopulateEditDropdownsAsync(viewModel);
+                return PartialView("_EditTicketModalPartial", viewModel);
             }
 
             var ticketFromDB = await _context.Tickets.FindAsync(id);
@@ -330,37 +348,167 @@ namespace TicketSystem.Web.Controllers
                 return NotFound();
             }
 
-            ticketFromDB.Description = ticketModel.Description;
-            ticketFromDB.AssigneeId = ticketModel.AssigneeId;
-            ticketFromDB.AssignedAt = DateTime.Now;
-
-            ModelState.Clear();
-
-            TryValidateModel(ticketFromDB);
-
-            if (ModelState.IsValid)
+            ticketFromDB.Title = viewModel.Title;
+            ticketFromDB.Description = viewModel.Description;
+            ticketFromDB.AssigneeId = viewModel.AssigneeId;
+            ticketFromDB.CurrentStatus = viewModel.CurrentStatus;
+            if (viewModel.AssigneeId != null)
             {
-                try
-                {
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!TicketModelExists(ticketModel.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                ticketFromDB.AssignedAt = DateTime.Now;
             }
-            ViewData["AssigneeId"] = new SelectList(_context.Users, "Id", "Id", ticketModel.AssigneeId);
 
-            return View(ticketModel);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!TicketModelExists(viewModel.Id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return Json(new { success = true });
         }
+
+        [HttpGet]
+        public async Task<IActionResult> EditPartial(int id)
+        {
+            // Get TicketData
+            var ticketData = await _context.Tickets
+                                .Where(t => t.Id == id)
+                                .Select(t => new TicketEditViewModel
+                                {
+                                    Id = t.Id,
+                                    Title = t.Title,
+                                    Description = t.Description,
+                                    CurrentStatus = t.CurrentStatus,
+                                    AssigneeId = t.AssigneeId,
+                                    WorkflowId = t.Project!.WorkflowId
+                                })
+                                .FirstOrDefaultAsync();
+
+            if(ticketData ==null) return NotFound();
+            if(ticketData.WorkflowId == 0) return NotFound("Workflow not found");
+
+            // List of Workflow Statuses and Users for Dropdowns
+            await PopulateEditDropdownsAsync(ticketData);
+
+            return PartialView("_EditTicketModalPartial", ticketData);
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> AddDependencyPartial(int ticketId)
+        {
+            var ticket = await _context.Set<TicketModel>().FindAsync(ticketId);
+            if (ticket == null) return NotFound();
+
+            var ticketsBlockingMe = await _context.Set<TicketDependency>()
+                                                .Where(td => td.BlockedTicketId == ticketId)
+                                                .Select(td => td.BlockingTicket)
+                                                .ToListAsync();
+
+            var ticketsIBlock = await _context.Set<TicketDependency>()
+                                                .Where(td => td.BlockingTicketId == ticketId)
+                                                .Select(td => td.BlockedTicket)
+                                                .ToListAsync();
+
+            var existingDependenciesIds = ticketsBlockingMe.Select(t => t.Id).ToList();
+
+            var candidateTickets = await _context.Set<TicketModel>()
+                                                .Where(t => t.ProjectId == ticket.ProjectId
+                                                         && t.Id != ticketId
+                                                         && !existingDependenciesIds.Contains(t.Id))
+                                                .ToListAsync();
+
+            var availableTicketsList = new List<SelectListItem>();
+
+            foreach (var candidate in candidateTickets)
+            {
+                if (!await CheckCircularDependency(ticketId, candidate.Id))
+                {
+                    availableTicketsList.Add(new SelectListItem
+                    {
+                        Value = candidate.Id.ToString(),
+                        Text = $"#{candidate.Id} - {candidate.Title}"
+                    });
+                }
+            }
+
+            var model = new TicketAddDependencyViewModel
+            {
+                BlockedTicketId = ticketId,
+                AvailableTickets = availableTicketsList,
+                TicketsBlockingMe = ticketsBlockingMe!,
+                TicketsIBlock = ticketsIBlock!
+            };
+
+            return PartialView("_AddDependencyTicketPartial", model);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddDependency(TicketAddDependencyViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return RedirectToAction(nameof(Details), new { id = model.BlockedTicketId });
+            }
+
+            var blockedTicket = await _context.Set<TicketModel>().FindAsync(model.BlockedTicketId);
+            var blockingTicket = await _context.Set<TicketModel>().FindAsync(model.BlockingTicketId);
+
+            if (blockedTicket == null || blockingTicket == null || blockedTicket.ProjectId != blockingTicket.ProjectId)
+            {
+                TempData["Error"] = "Invalid Tickets or they belong to different projects";
+                return RedirectToAction(nameof(Details), new { id = model.BlockedTicketId });
+            }
+
+            if (await CheckCircularDependency(model.BlockedTicketId, model.BlockingTicketId))
+            {
+                TempData["Error"] = "It is not possible to add dependency. They would generate circular dependency";
+                return RedirectToAction(nameof(Details), new { id = model.BlockedTicketId });
+            }
+
+            var dependency = new TicketDependency
+            {
+                BlockedTicketId = model.BlockedTicketId,
+                BlockingTicketId = model.BlockingTicketId
+            };
+
+            _context.Add(dependency);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Dependency added successfully.";
+            return RedirectToAction(nameof(Details), new { id = model.BlockedTicketId });
+        }
+
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveDependency(int blockedId, int blockingId)
+        {
+            var dependency = await _context.Set<TicketDependency>()
+                                .FirstOrDefaultAsync(td => td.BlockedTicketId == blockedId && td.BlockingTicketId == blockingId);
+
+            if (dependency != null)
+            {
+                _context.Remove(dependency);
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Dependency Removed Successfully.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = blockedId });
+        }
+
+
 
         // GET: Ticket/Delete/5
         public async Task<IActionResult> Delete(int? id)
@@ -404,7 +552,6 @@ namespace TicketSystem.Web.Controllers
             return _context.Tickets.Any(e => e.Id == id);
         }
 
-       
         private IQueryable<TicketModel> ApplyFilters(IQueryable<TicketModel> query, TicketFilterViewModel model)
         {
             if (!string.IsNullOrWhiteSpace(model.SearchTitle))
@@ -440,6 +587,51 @@ namespace TicketSystem.Web.Controllers
             return query;
         }
 
+        private async Task PopulateEditDropdownsAsync(TicketEditViewModel model)
+        {
+            var statusList = await _context.WorkflowStatuses
+                                .Where(ws => ws.WorkflowId == model.WorkflowId)
+                                .Select(ws => new SelectListItem { Value = ws.Name, Text = ws.Name }).ToListAsync();
 
+            var usersList = await _context.Users
+                                .Select(u => new SelectListItem { Value = u.Id, Text = u.UserName })
+                                .ToListAsync();
+
+
+            model.StatusList = statusList;
+            model.UsersList = usersList;
+
+        }
+
+        private async Task<bool> CheckCircularDependency(int blockedId, int blockingId)
+        {
+            var queue = new Queue<int>();
+            var visited = new HashSet<int>();
+
+            queue.Enqueue(blockingId);
+
+            while (queue.Count > 0)
+            {
+                var currentId = queue.Dequeue();
+
+                if (currentId == blockedId)
+                    return true;
+
+                if (!visited.Contains(currentId))
+                {
+                    visited.Add(currentId);
+                    var blockers = await _context.Set<TicketDependency>()
+                        .Where(td => td.BlockedTicketId == currentId)
+                        .Select(td => td.BlockingTicketId)
+                        .ToListAsync();
+
+                    foreach (var blocker in blockers)
+                    {
+                        queue.Enqueue(blocker);
+                    }
+                }
+            }
+            return false;
+        }
     }
 }

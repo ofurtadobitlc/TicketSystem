@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 using TicketSystem.Web.Models.Account;
 using TicketSystem.Web.Models.Project;
 
-namespace TicketSystem.Web.Models.Ticket
+namespace TicketSystem.Web.Models.Ticket.ViewModels
 {
-    public class CreateTicketViewModel
+    public class TicketCreateViewModel
     {
         [Required(ErrorMessage = "Title is required.")]
         public string Title { get; set; } = string.Empty;
@@ -21,6 +21,6 @@ namespace TicketSystem.Web.Models.Ticket
 
         [Display(Name = "Assign to")]
         public string? AssigneeId { get; set; }
-        public SelectList? UsersList { get; set; }
+        public IEnumerable<SelectListItem>? UsersList { get; set; }
     }
 }

@@ -2,9 +2,9 @@
 using System.ComponentModel.DataAnnotations;
 using TicketSystem.Web.Models.Account;
 
-namespace TicketSystem.Web.Models.Ticket
+namespace TicketSystem.Web.Models.Ticket.ViewModels
 {
-    public class DisplayTicketViewModel
+    public class TicketListViewModel
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;

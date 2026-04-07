@@ -1,4 +1,4 @@
-﻿@using TicketSystem.Web.Models.Ticket
+﻿@using TicketSystem.Web.Models.Ticket.ViewModels
 @model TicketFilterViewModel
 
 @{
@@ -8,9 +8,10 @@
 <h2>Tickets</h2>
 
 <div class="d-flex justify-content-end my-3">
-    <a asp-action="Create" class="btn btn-success"><i class="bi bi-plus-lg"></i> New Ticket</a>
+    <a class="btn btn-success" onclick="openCreateModal()"><i class="bi bi-plus-lg"></i> New Ticket</a>
 </div>
 
+<!-- Filter -->
 <div class="card mb-4 bg-light-subtle shadow-sm">
     <div class="card-body">
         <form method="get" asp-action="Index">
@@ -74,6 +75,7 @@
     </div>
 </div>
 
+<!-- Ticket List -->
 <div class="table-responsive">
     <table class="table table-striped table-hover align-middle shadow-sm">
         <thead class="table-dark">
@@ -119,12 +121,16 @@
                             @if (item.CanChange)
                             {
                                 <div class="dropdown">
-                                    <button class="btn btn-sm btn-link text-secondary text-decoration-none p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <button class="btn btn-sm btn-link text-secondary text-decoration-none p-0"
+                                            type="button"
+                                            data-bs-toggle="dropdown"
+                                            data-bs-popper-config='{"strategy":"fixed"}'
+                                            aria-expanded="false">
                                         <i class="bi bi-three-dots-vertical fs-5"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow">
                                         <li>
-                                            <a class="dropdown-item text-sm-start" asp-action="Edit" asp-route-id="@item.Id">
+                                            <a class="dropdown-item text-sm-start" onclick="openEditModal(@item.Id)">
                                                 <i class="bi bi-pencil-square me-2 text-primary"></i> Update
                                             </a>
                                         </li>
@@ -144,3 +150,76 @@
         </tbody>
     </table>
 </div>
+
+<!-- Ticket Create Modal -->
+<div class="modal fade" id="createTicketModal" tabindex="-1" aria-labelledby="createTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" id="createModalContent">
+            <!-- Partial View: _CreateTicketModalPartial -->
+        </div>
+    </div>
+</div>
+
+<!-- Ticket Edit Modal -->
+<div class="modal fade" id="editTicketModal" tabindex="-1" aria-labelledby="editTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" id="editModalContent">
+            <!-- Partial View: _EditTicketModalPartial -->
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // --- 1. LOAD AND SHOW CREATE MODAL ---
+        function openCreateModal() {
+            $.get('@Url.Action("CreatePartial", "Ticket")', function (data) {
+                $('#createModalContent').html(data);
+                $('#createTicketModal').modal('show');
+                
+                // Re-bind ASP.NET client-side validation for the injected form
+                $.validator.unobtrusive.parse('#createModalContent form');
+            });
+        }
+
+        // --- 2. LOAD AND SHOW EDIT MODAL ---
+        function openEditModal(id) {
+            $.get('@Url.Action("EditPartial", "Ticket")/' + id, function (data) {
+                $('#editModalContent').html(data);
+                $('#editTicketModal').modal('show');
+                
+                $.validator.unobtrusive.parse('#editModalContent form');
+            });
+        }
+
+        // --- 3. HANDLE FORM SUBMISSIONS (CREATE & EDIT) ---
+        // Event delegation because the forms are injected dynamically
+        $(document).on('submit', '.ajax-modal-form', function (e) {
+            e.preventDefault(); // Stop standard full-page submission
+            
+            var form = $(this);
+            var modalContentId = form.closest('.modal-content').attr('id');
+
+            $.ajax({
+                url: form.attr('action'),
+                type: form.attr('method'),
+                data: form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        // Success: Close modal and refresh the page to show new data
+                        // (This keeps your current URL filters intact!)
+                        location.reload();
+                    } else {
+                        // Validation Failed: The controller returned the Partial View HTML with error messages.
+                        // We replace the modal content with this new HTML.
+                        $('#' + modalContentId).html(response);
+                        $.validator.unobtrusive.parse('#' + modalContentId + ' form');
+                    }
+                },
+                error: function () {
+                    alert("An error occurred while saving. Please try again.");
+                }
+            });
+        });
+    </script>
+}
