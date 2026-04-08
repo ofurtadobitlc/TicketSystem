@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using TicketSystem.Web.Models.Communication;
+using TicketSystem.Web.Models.ProjectManagement;
 using TicketSystem.Web.Models.Ticket;
 
 namespace TicketSystem.Web.Models.Account
@@ -17,10 +18,8 @@ namespace TicketSystem.Web.Models.Account
         public virtual ICollection<TicketComment> Comments { get; set; } = [];
         public virtual ICollection<Message> MessagesSent { get; set; } = [];
         public virtual ICollection<Message> MessagesReceived { get; set; } = [];
-
-
-
-
+        public virtual ICollection<ProjectMember> ProjectMemberships { get; set; } = [];
+        public virtual ICollection<ProjectModel> ProjectsCreated { get; set; } = [];
 
     }
 }

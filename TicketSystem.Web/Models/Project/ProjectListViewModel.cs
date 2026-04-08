@@ -1,4 +1,4 @@
-﻿namespace TicketSystem.Web.Models.Project.Proposta
+﻿namespace TicketSystem.Web.Models.Project
 {
     public class ProjectListViewModel
     {

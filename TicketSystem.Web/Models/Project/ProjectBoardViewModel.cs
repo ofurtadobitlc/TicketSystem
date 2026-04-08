@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace TicketSystem.Web.Models.Project.Proposta
+namespace TicketSystem.Web.Models.Project
 {
     public class ProjectBoardViewModel
     {

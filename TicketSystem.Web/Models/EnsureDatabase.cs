@@ -8,7 +8,7 @@ namespace TicketSystem.Web.Models
     public static class EnsureDatabase
     {
         // Definimos as Roles num array para facilitar a iteração e futura manutenção
-        private static readonly string[] _roles = { "Admin", "Tester", "Developer" };
+        private static readonly string[] _roles = { "Admin", "Manager", "Tester", "Developer" };
 
         // Dados do utilizador a ser criado
         private const string AdminUserName = "ofurtado";

@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Validation;
 using System.ComponentModel.DataAnnotations;
 
-namespace TicketSystem.Web.Models.Project
+namespace TicketSystem.Web.Models.ProjectManagement
 {
     public class CreateProjectViewModel: IValidatableObject
     {

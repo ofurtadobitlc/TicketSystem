@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TicketSystem.Web.Models;
 using TicketSystem.Web.Models.Account;
-using TicketSystem.Web.Models.Project.Proposta;
+using TicketSystem.Web.Models.Project;
+using TicketSystem.Web.Models.ProjectManagement;
 using TicketSystem.Web.Models.Ticket;
 
 namespace TicketSystem.Web.Controllers
@@ -29,13 +30,13 @@ namespace TicketSystem.Web.Controllers
         // POST: Ticket/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Models.Project.Proposta.TicketCreateViewModel model)
+        public async Task<IActionResult> Create(TicketCreateViewModel model)
         {
             // Se a validação falhar, redirecionamos de volta para o quadro do projeto com erro
             if (!ModelState.IsValid)
             {
                 TempData["ErrorMessage"] = "Fill the required fields";
-                return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
+                return RedirectToAction("Details", "Project", new { id = model.ProjectId });
             }
 
             // TODO: Dont need to take Workflow and Statuses, All tickets starts with 'Open'
@@ -50,7 +51,7 @@ namespace TicketSystem.Web.Controllers
             if (project.EndDate.HasValue)
             {
                 TempData["ErrorMessage"] = "It is not possible to create ticket on a finished project.";
-                return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
+                return RedirectToAction("Details", "Project", new { id = model.ProjectId });
             }
 
             // 1. Pega o usuário logado:   TODO: Add Attribute Authorize.
@@ -61,7 +62,7 @@ namespace TicketSystem.Web.Controllers
             if (project.Workflow == null || !project.Workflow.Statuses.Any())
             {
                 TempData["ErrorMessage"] = "Error: The project does not have a valid workflow";
-                return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
+                return RedirectToAction("Details", "Project", new { id = model.ProjectId });
             }
 
             // Regra de Negócio: O status inicial é o primeiro status cadastrado no Workflow
@@ -86,7 +87,7 @@ namespace TicketSystem.Web.Controllers
             TempData["SuccessMessage"] = $"Ticket #{ticket.Id} criado com sucesso!";
 
             // Redireciona de volta para o Kanban
-            return RedirectToAction("Details", "PropostaProject", new { id = model.ProjectId });
+            return RedirectToAction("Details", "Project", new { id = model.ProjectId });
         }
 
         [HttpPost]
@@ -102,7 +103,7 @@ namespace TicketSystem.Web.Controllers
 
             if (ticket == null)
             {
-                return NotFound(new { success = false, message = "Ticket não encontrado." });
+                return NotFound(new { success = false, message = "Ticket not found." });
             }
 
             // BLINDAGEM DE NEGÓCIO: Rejeita se o projeto ou o ticket estiverem encerrados
@@ -149,7 +150,7 @@ namespace TicketSystem.Web.Controllers
                 TempData["SuccessMessage"] = "Utilizador atribuído com sucesso.";
             }
 
-            return RedirectToAction("Details", "PropostaProject", new { id = ProjectId });
+            return RedirectToAction("Details", "Project", new { id = ProjectId });
         }
 
     }

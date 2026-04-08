@@ -48,11 +48,11 @@ namespace TicketSystem.Web.Controllers
         {
             var viewModel = new WorkflowCreateViewModel();
 
-            // Inicia a View já com o Open e o Close
+            // Inicia a View já com o Open e o Closed
             viewModel.Statuses = new List<WorkflowStatusViewModel>
             {
                 new WorkflowStatusViewModel { Name = "Open", IsInicial = true, IsFinal = false },
-                new WorkflowStatusViewModel { Name = "Close", IsInicial = false, IsFinal = true }
+                new WorkflowStatusViewModel { Name = "Closed", IsInicial = false, IsFinal = true }
             };
 
             return View(viewModel);
@@ -77,12 +77,12 @@ namespace TicketSystem.Web.Controllers
                     status.IsInicial = false;
                     status.IsFinal = false;
                 }
-                // Força o primeiro a ser Inicial (Open) e o último a ser Final (Close)
+                // Força o primeiro a ser Inicial (Open) e o último a ser Final (Closed)
                 // Isso protege caso o usuário manipule o HTML no navegador
                 viewModel.Statuses.First().Name = "Open";
                 viewModel.Statuses.First().IsInicial = true;
 
-                viewModel.Statuses.Last().Name = "Close";
+                viewModel.Statuses.Last().Name = "Closed";
                 viewModel.Statuses.Last().IsFinal = true;
             }
 

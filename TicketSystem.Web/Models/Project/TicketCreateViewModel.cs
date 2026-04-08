@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
 
-namespace TicketSystem.Web.Models.Project.Proposta
+namespace TicketSystem.Web.Models.Project
 {
     public class TicketCreateViewModel
     {

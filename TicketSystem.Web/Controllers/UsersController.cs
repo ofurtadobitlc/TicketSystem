@@ -26,13 +26,6 @@ namespace TicketSystem.Web.Controllers
             return View(viewModel);
         }
 
-        // GET: Users/Create : Not Used - Modal is used instead
-        public async Task<IActionResult> Create()
-        {
-            ViewBag.Roles = new SelectList(await _roleManager.Roles.ToListAsync<AppRole>(), "Id", "Name");
-            return View();
-        }
-
         // POST: Users/Create
         [HttpPost]
         [ValidateAntiForgeryToken]

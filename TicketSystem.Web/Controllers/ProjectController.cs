@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using TicketSystem.Web.Models;
 using TicketSystem.Web.Models.Project;
+using TicketSystem.Web.Models.ProjectManagement;
 
 namespace TicketSystem.Web.Controllers
 {
-    [Authorize(Roles ="Admin")]
     public class ProjectController : Controller
     {
         private readonly AppDbContext _context;
@@ -21,168 +16,161 @@ namespace TicketSystem.Web.Controllers
             _context = context;
         }
 
-        // GET: Project
+
+        // GET: Project/Index
         public async Task<IActionResult> Index()
         {
-            var projects = _context.Projects.Include(p => p.Workflow);
-
-
-            return View(await projects.ToListAsync());
-        }
-
-        // GET: Project/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
+            var projectsList = await _context.Projects
+            .Where(p => !p.IsDeleted) 
+            .Select(p => new ProjectListViewModel
             {
-                return NotFound();
-            }
+                Id = p.Id,
+                Title = p.Title,
+                DescriptionSnippet = p.Description.Length > 100 ? p.Description.Substring(0, 100) + "..." : p.Description,
+                StartDate = p.StartDate,
+                EndDate = p.EndDate,
+                WorkflowName = p.Workflow != null ? p.Workflow.Name : "Without Workflow",
+                TotalTickets = p.Tickets.Count(),
+                OpenTickets = p.Tickets.Count(t => t.CurrentStatus != "Closed")
+            }).ToListAsync();
 
-            var projectModel = await _context.Projects
-                .Include(p => p.Workflow)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (projectModel == null)
-            {
-                return NotFound();
-            }
-
-            return View(projectModel);
+            return View(projectsList);
         }
 
         // GET: Project/Create
         public async Task<IActionResult> Create()
         {
-            var workflows = await _context.Workflows.ToListAsync();
-
-            var viewModel = new CreateProjectViewModel
+            var viewModel = new ProjectCreateViewModel
             {
-                Workflows = workflows.Select(w => new SelectListItem
-                {
-                    Value = w.Id.ToString(),
-                    Text = w.Name
-                })
+                StartDate = DateOnly.FromDateTime(DateTime.Today), 
+                WorkflowsList = new SelectList(await _context.Workflows.ToListAsync(), "Id", "Name")
             };
-
             return View(viewModel);
         }
 
         // POST: Project/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(CreateProjectViewModel viewModel)
+        public async Task<IActionResult> Create(ProjectCreateViewModel model)
         {
             if (ModelState.IsValid)
             {
                 var project = new ProjectModel
                 {
-                    Title = viewModel.Title,
-                    Description = viewModel.Description,
-                    StartDate = viewModel.StartDate,
-                    WorkflowId = viewModel.WorkflowId!.Value,
+                    Title = model.Title,
+                    Description = model.Description,
+                    StartDate = model.StartDate,
+                    WorkflowId = model.WorkflowId,
                     IsDeleted = false
+                    // EndDate null by Default, set when project is closed
                 };
-                _context.Add(project);
+
+                _context.Projects.Add(project);
                 await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = "Project created successfully!";
                 return RedirectToAction(nameof(Index));
             }
 
-            viewModel.Workflows = new SelectList(_context.Workflows, "Id", "Name", viewModel.WorkflowId);
-            return View(viewModel);
+            model.WorkflowsList = new SelectList(await _context.Workflows.ToListAsync(), "Id", "Name", model.WorkflowId);
+            return View(model);
         }
 
-        // GET: Project/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        // GET: Project/Details/5 (Kanban board)
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            var project = await _context.Projects
+                .Include(p => p.Workflow)
+                .ThenInclude(w => w.Statuses)
+                .Include(p => p.Tickets)
+                .ThenInclude(t => t.Assignee)
+                .Include(p => p.Tickets).ThenInclude(t => t.Comments)
+                .Include(p => p.Tickets).ThenInclude(t => t.BlockedByTickets)
+                .FirstOrDefaultAsync(p => p.Id == id);
 
-            var projectModel = await _context.Projects.FindAsync(id);
-            if (projectModel == null)
+            if (project == null) return NotFound();
+
+            var boardViewModel = new ProjectBoardViewModel
             {
-                return NotFound();
-            }
-            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Name", projectModel.WorkflowId);
-            return View(projectModel);
+                ProjectId = project.Id,
+                ProjectTitle = project.Title,
+                WorkflowName = project.Workflow?.Name ?? "",
+                EndDate = project.EndDate,
+                WorkflowStatuses = project.Workflow?.Statuses.Select(s => s.Name).ToList() ?? new List<string>(),
+
+                Tickets = project.Tickets.Select(t => new TicketCardViewModel
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    CurrentStatus = t.CurrentStatus,
+                    AssigneeName = t.Assignee?.UserName ?? "Não atribuído",
+                    CommentsCount = t.Comments.Count,
+                    AttachmentsCount = t.Attachments?.Count ?? 0,
+                    IsClosed = t.ClosedAt.HasValue,
+                    IsBlocked = t.BlockedByTickets.Any()
+                }).ToList()
+            };
+
+            boardViewModel.UsersList = new SelectList(_context.Users.ToList(), "Id", "UserName");
+
+
+            return View(boardViewModel);
         }
 
-        // POST: Project/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, ProjectModel projectModel)
+        public async Task<IActionResult> Close(int id)
         {
-            if (id != projectModel.Id)
+            var project = await _context.Projects.FindAsync(id);
+
+            if (project == null)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            // Verifica se já não está encerrado para evitar reescrita da data
+            if (project.EndDate.HasValue)
             {
-                try
-                {
-                    _context.Update(projectModel);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ProjectModelExists(projectModel.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["WorkflowId"] = new SelectList(_context.Workflows, "Id", "Name", projectModel.WorkflowId);
-            return View(projectModel);
-        }
-
-        // GET: Project/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
+                TempData["ErrorMessage"] = "Este projeto já se encontra encerrado.";
+                return RedirectToAction(nameof(Details), new { id = project.Id });
             }
 
-            var projectModel = await _context.Projects
-                .Include(p => p.Workflow)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (projectModel == null)
-            {
-                return NotFound();
-            }
+            // Define a data de fim como a data de hoje
+            project.EndDate = DateOnly.FromDateTime(DateTime.Today);
 
-            return View(projectModel);
-        }
-
-        // POST: Project/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var projectModel = await _context.Projects.FindAsync(id);
-            
-            if (projectModel != null)
-            {
-                projectModel.IsDeleted = true;
-            }
-
+            _context.Projects.Update(project);
             await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"O projeto '{project.Title}' foi encerrado com sucesso.";
+
+            // Redireciona para a listagem (ou de volta para os detalhes, como preferir)
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ProjectModelExists(int id)
+        // POST: Project/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        // [Authorize(Roles = "Admin")] // Descomente se usar Roles no Identity
+        public async Task<IActionResult> Delete(int id)
         {
-            return _context.Projects.Any(e => e.Id == id);
+            var project = await _context.Projects.FindAsync(id);
+
+            if (project == null) return NotFound();
+
+            // Dupla verificação de segurança no backend
+            if (!project.EndDate.HasValue)
+            {
+                TempData["ErrorMessage"] = "Only closed Projects can be deleted";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Soft Delete
+            project.IsDeleted = true;
+            _context.Projects.Update(project);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"The Project '{project.Title}' was successfully deleted.";
+            return RedirectToAction(nameof(Index));
         }
     }
 }

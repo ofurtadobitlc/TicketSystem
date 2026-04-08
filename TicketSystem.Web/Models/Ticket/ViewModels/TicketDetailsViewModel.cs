@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using TicketSystem.Web.Models.Project;
+using TicketSystem.Web.Models.ProjectManagement;
 
 namespace TicketSystem.Web.Models.Ticket.ViewModels
 {

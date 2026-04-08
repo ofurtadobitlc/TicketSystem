@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TicketSystem.Web.Models.Account;
-using TicketSystem.Web.Models.Project;
+using TicketSystem.Web.Models.ProjectManagement;
 
 namespace TicketSystem.Web.Models.Ticket
 {

@@ -1,4 +1,4 @@
-﻿using TicketSystem.Web.Models.Project;
+﻿using TicketSystem.Web.Models.ProjectManagement;
 using TicketSystem.Web.Models.Ticket;
 
 namespace TicketSystem.Web.Models.Workflow

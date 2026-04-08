@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TicketSystem.Web.Models.Account;
 using TicketSystem.Web.Models.Communication;
-using TicketSystem.Web.Models.Project;
+using TicketSystem.Web.Models.ProjectManagement;
 using TicketSystem.Web.Models.Ticket;
 using TicketSystem.Web.Models.Workflow;
 
@@ -26,7 +26,7 @@ namespace TicketSystem.Web.Models
         public DbSet<WorkflowModel> Workflows { get; set; }
         public DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
         public DbSet<WorkflowStatus> WorkflowStatusTransitions { get; set; }
-
+        public DbSet<ProjectMember> ProjectMembers { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> opts) : base(opts) { }
 
@@ -75,7 +75,6 @@ namespace TicketSystem.Web.Models
 
 
             // TicketDependency
-            // 1. Chave Composta
             modelBuilder.Entity<TicketDependency>()
                 .HasKey(td => new { td.BlockedTicketId, td.BlockingTicketId });
 
@@ -135,6 +134,29 @@ namespace TicketSystem.Web.Models
                 .HasForeignKey(ws => ws.AuthorizedRoleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
+            //Project Member
+            modelBuilder.Entity<ProjectMember>()
+                        .HasKey(pm => new { pm.ProjectId , pm.MemberId });
+
+            modelBuilder.Entity<ProjectMember>()
+                .HasOne(pm => pm.Project)
+                .WithMany(p => p.Members)
+                .HasForeignKey(pm => pm.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProjectMember>()
+                .HasOne(pm => pm.Member)
+                .WithMany(p => p.ProjectMemberships)
+                .HasForeignKey(pm => pm.MemberId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            modelBuilder.Entity<ProjectModel>()
+                .HasOne(p => p.CreatedBy)
+                .WithMany(p => p.ProjectsCreated)
+                .HasForeignKey(p => p.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Message
             modelBuilder.Entity<Message>()
