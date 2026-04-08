@@ -136,3 +136,88 @@ body {
     .user-avatar.dropdown-toggle::after {
         display: none;
     }
+
+
+.avatar-circle {
+    width: 45px;
+    height: 45px;
+    background-color: #0d6efd; /* Bootstrap Primary */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border-radius: 50%;
+    font-size: 1.1rem;
+}
+
+.online-indicator {
+    width: 12px;
+    height: 12px;
+    bottom: 2px;
+    right: 2px;
+}
+
+.chat-container {
+    height: calc(100vh - 100px); /* Adjust based on your header height */
+}
+
+.conversation-list {
+    overflow-y: auto;
+    height: 100%;
+    border-right: 1px solid #dee2e6;
+}
+
+.chat-messages {
+    overflow-y: auto;
+    height: calc(100% - 70px); /* Leave room for input box */
+    padding: 1rem;
+}
+
+/* Wrapper to align messages left or right */
+.message-wrapper {
+    display: flex;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+    .message-wrapper.sent {
+        justify-content: flex-end;
+    }
+
+    .message-wrapper.received {
+        justify-content: flex-start;
+    }
+
+/* The actual chat bubble */
+.chat-bubble {
+    max-width: 75%;
+    padding: 8px 12px;
+    border-radius: 15px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    word-wrap: break-word;
+}
+
+/* Sender (Current User) Styling */
+.message-wrapper.sent .chat-bubble {
+    background-color: #0d6efd; /* Bootstrap Primary */
+    color: white;
+    border-bottom-right-radius: 2px; /* Pointy edge */
+}
+
+/* Receiver Styling */
+.message-wrapper.received .chat-bubble {
+    background-color: #f8f9fa; /* Bootstrap Light */
+    color: #212529; /* Bootstrap Dark text */
+    border-bottom-left-radius: 2px; /* Pointy edge */
+    border: 1px solid #dee2e6;
+}
+
+/* Timestamp */
+.chat-timestamp {
+    font-size: 0.7rem;
+    opacity: 0.75;
+    margin-top: 4px;
+    display: block;
+    text-align: right;
+}

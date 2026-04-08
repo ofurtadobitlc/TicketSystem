@@ -32,7 +32,7 @@
             <a asp-controller="PropostaProject" asp-action="Index" class="nav-link">
                 <i class="bi bi-boxes"></i> <span class="sidebar-text">Projects</span>
             </a>
-            <a href="#" class="nav-link">
+            <a asp-controller="Messages" asp-action="Index" class="nav-link">
                 <i class="bi bi-envelope"></i> <span class="sidebar-text">Messages</span>
             </a>
 
@@ -126,6 +126,43 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/chatHub")
+        .build();
+
+        connection.on("ReceiveNotification", function (unreadCount) {
+        // Update the bell icon notification badge globally
+        const badge = document.querySelector(".bi-bell").nextElementSibling;
+        if(badge) {
+        badge.innerText = unreadCount;
+        badge.style.display = unreadCount > 0 ? "inline-block" : "none";
+        }
+        });
+
+        connection.on("ReceiveMessage", function (senderId, messageContent) {
+        // If the user is currently on the Messages page and chatting with senderId,
+        // append the message to the chat window.
+        // Otherwise, update the unread count on the conversation list.
+        if (typeof handleIncomingMessage === "function") {
+        handleIncomingMessage(senderId, messageContent);
+        }
+        });
+    
+        connection.on("UserPresenceChanged", function (userId, isOnline) {
+        // Update the green indicator dot dynamically in the UI
+        const userElement = document.querySelector(`[data-user-id='${userId}'] .online-indicator`);
+        if (userElement) {
+        userElement.classList.toggle('bg-success', isOnline);
+        userElement.classList.toggle('bg-secondary', !isOnline);
+        }
+        });
+
+        connection.start().catch(function (err) {
+        return console.error(err.toString());
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

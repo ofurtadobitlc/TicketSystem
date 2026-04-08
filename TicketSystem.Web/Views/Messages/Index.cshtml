@@ -1,0 +1,297 @@
+﻿@{
+}
+
+<div class="container-fluid bg-light-subtle rounded shadow-sm chat-container d-flex p-0">
+    
+    <!-- Left Sidebar: Conversations -->
+    <div class="col-4 conversation-list p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Conversations</h5>
+            <button class="btn btn-primary btn-sm" id="btnNewChat" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                <i class="bi bi-plus-lg"></i> New
+            </button>
+        </div>
+        
+        <!-- Example of a Conversation Item (Render this dynamically via your Controller) -->
+        <div class="list-group list-group-flush" id="conversationList">
+            <a href="#" class="list-group-item list-group-item-action d-flex align-items-center p-2 rounded chat-user-link" data-user-id="USER_ID_HERE">
+                <div class="position-relative me-3">
+                    <div class="avatar-circle">JD</div>
+                    <span class="position-absolute bg-success border border-white rounded-circle online-indicator"></span>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-0">John Doe</h6>
+                </div>
+                <!-- Unread Badge -->
+                <span class="badge bg-danger rounded-pill">2</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Right Side: Active Chat -->
+    <div class="col-8 d-flex flex-column">
+        <div class="chat-header p-3 border-bottom d-flex align-items-center">
+            <h5 class="mb-0" id="activeChatName">Select a conversation</h5>
+        </div>
+        
+        <div class="chat-messages flex-grow-1" id="chatWindow">
+            <!-- Messages will be appended here -->
+        </div>
+        
+        <div class="chat-input p-3 border-top">
+            <div class="input-group">
+                <input type="text" id="messageInput" class="form-control" placeholder="Type a message..." disabled>
+                <button class="btn btn-primary" id="btnSendMessage" disabled>
+                    <i class="bi bi-send"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for New Conversation -->
+<div class="modal fade" id="newChatModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Start New Conversation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="userSelectionList">
+                <!-- Load Users dynamically here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+                // Variable to keep track of the currently open chat
+        let currentChatUserId = null;
+
+        $(document).ready(function () {
+            // 1. ON PAGE LOAD: Populate the sidebar immediately
+            loadConversations();
+
+            // Fetch and load users when the "New Conversation" modal opens
+            $('#newChatModal').on('show.bs.modal', function () {
+                loadUsersForNewChat();
+            });
+
+            // Bind the send button click event
+            $('#btnSendMessage').click(function () {
+                sendMessage();
+            });
+
+            $('#messageInput').keypress(function (e) {
+                // '13' is the standard keycode for the Enter key
+                if (e.which === 13) {
+                    e.preventDefault(); // Prevents a new line or accidental form submission
+            
+                    // Only send if the button is not disabled
+                    if (!$('#btnSendMessage').prop('disabled')) {
+                        sendMessage();
+                    }
+                }
+            });
+        });
+
+        function loadUsersForNewChat() {
+            const userListContainer = $('#userSelectionList');
+    
+            // Show a loading spinner for good UX
+            userListContainer.html(`
+                <div class="d-flex justify-content-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `);
+
+            // Fetch users from the controller
+            $.get('/Messages/GetUsers', function (users) {
+                if (!users || users.length === 0) {
+                    userListContainer.html('<p class="text-center text-muted mt-3">No other users found.</p>');
+                    return;
+                }
+
+                let html = '<div class="list-group list-group-flush">';
+                users.forEach(user => {
+                    html += `
+                        <button type="button" class="list-group-item list-group-item-action d-flex align-items-center p-2 rounded border-0 mb-1 bg-light-subtle"
+                                onclick="startNewChat('${user.id}', '${user.name}')">
+                            <div class="avatar-circle me-3">${user.initials}</div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">${user.name}</h6>
+                            </div>
+                            <i class="bi bi-chat-left-text text-muted"></i>
+                        </button>`;
+                });
+                html += '</div>';
+
+                // Inject the HTML into the modal body
+                userListContainer.html(html);
+            }).fail(function() {
+                userListContainer.html('<p class="text-center text-danger mt-3">Failed to load users.</p>');
+            });
+        }
+
+        function startNewChat(userId, userName) {
+            // 1. Close the Bootstrap modal
+            const modalElement = document.getElementById('newChatModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            // 2. Clear any lingering modal backdrops (fixes a common Bootstrap quirk)
+            $('body').removeClass('modal-open');
+            $('.modal-backdrop').remove();
+
+            // 3. Reuse the loadChat function to switch the right-pane view
+            loadChat(userId, userName);
+        }
+
+                function loadConversations() {
+            $.get('/Messages/GetConversations', function (data) {
+                let html = '';
+                data.forEach(conv => {
+                    let activeClass = conv.userId === currentChatUserId ? 'bg-secondary-subtle' : 'bg-light-subtle';
+            
+                    // CHECK THE STATUS HERE:
+                    let onlineStatusClass = conv.isOnline ? 'bg-success' : 'bg-secondary';
+            
+                    html += `
+                        <a href="#" class="list-group-item list-group-item-action d-flex align-items-center p-2 rounded chat-user-link ${activeClass}"
+                           onclick="loadChat('${conv.userId}', '${conv.name}')" data-user-id="${conv.userId}">
+                            <div class="position-relative me-3">
+                                <div class="avatar-circle">${conv.initials}</div>
+                                <!-- APPLY THE STATUS CLASS HERE: -->
+                                <span class="position-absolute border border-white rounded-circle online-indicator ${onlineStatusClass}" id="status-${conv.userId}"></span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">${conv.name}</h6>
+                                <small class="text-muted text-truncate d-block" style="max-width: 150px;">${conv.lastMessage}</small>
+                            </div>
+                            ${conv.unreadCount > 0 ? `<span class="badge bg-danger rounded-pill">${conv.unreadCount}</span>` : ''}
+                        </a>`;
+                });
+                $('#conversationList').html(html);
+            });
+        }
+
+        // 2. WHEN A MESSAGE IS RECEIVED (Update your existing SignalR listener)
+        connection.on("ReceiveMessage", function (senderId, messageContent) {
+    
+            // If the user is currently looking at the chat with the sender, append it to the window
+            if (currentChatUserId === senderId) {
+                appendMessageToChatWindow(messageContent, false); // Your custom function to draw the chat bubble
+        
+                // Optionally: Trigger an AJAX call here to mark it as read immediately
+                // since they are actively looking at the screen.
+            }
+    
+            // Refresh the sidebar so the unread count and latest message snippet update
+            loadConversations();
+        });
+
+        // 3. AFTER SENDING A MESSAGE
+        function sendMessage() {
+            const content = $('#messageInput').val();
+            if (!content || !currentChatUserId) return;
+
+            $.post('/Messages/SendMessage', { receiverId: currentChatUserId, content: content }, function () {
+                // Clear the input
+                $('#messageInput').val('');
+        
+                // Remove the empty placeholder if it exists
+                $('#emptyChatMsg').remove();
+        
+                // Append your own message to the chat window
+                appendMessageToChatWindow(content, true);
+        
+                // Refresh the sidebar to update the "Last Message" text
+                loadConversations();
+            });
+        }
+
+        // Helper to open a chat
+        function loadChat(userId, userName) {
+            currentChatUserId = userId;
+            $('#activeChatName').text(userName);
+    
+            // Enable inputs
+            $('#messageInput').prop('disabled', false);
+            $('#btnSendMessage').prop('disabled', false);
+
+            // Fetch the chat history from the controller
+            $.get(`/Messages/GetChatHistory?userId=${userId}`, function (messages) {
+                // Render messages in the #chatWindow...
+        
+                // After loading the chat (which marks messages as read in the DB),
+                // refresh the sidebar to clear the red unread badge!
+                loadConversations();
+            });
+        }
+        
+        // Add a helper function to keep the chat scrolled to the bottom
+        function scrollToBottom() {
+            const chatWindow = document.getElementById('chatWindow');
+            if (chatWindow) {
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        }
+
+        // Implement the function to draw a single chat bubble
+        function appendMessageToChatWindow(content, isMine, sentAtTime) {
+            // If no time is provided (e.g., sending a new message right now), use current time
+            const time = sentAtTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const alignmentClass = isMine ? 'sent' : 'received';
+
+            const html = `
+                <div class="message-wrapper ${alignmentClass}">
+                    <div class="chat-bubble">
+                        <div>${content}</div>
+                        <span class="chat-timestamp">${time}</span>
+                    </div>
+                </div>
+            `;
+    
+            $('#chatWindow').append(html);
+            scrollToBottom(); // Always scroll down when a new message appears
+        }
+
+        // Update your existing loadChat function to render the history
+        function loadChat(userId, userName) {
+            currentChatUserId = userId;
+            $('#activeChatName').text(userName);
+    
+            // Enable inputs
+            $('#messageInput').prop('disabled', false);
+            $('#btnSendMessage').prop('disabled', false);
+
+            // Fetch the chat history from the controller
+            $.get(`/Messages/GetChatHistory?userId=${userId}`, function (messages) {
+        
+                // 1. Clear the chat window before loading new messages
+                $('#chatWindow').empty();
+        
+                // 2. Loop through the history and render each message
+                if (messages && messages.length > 0) {
+                    messages.forEach(msg => {
+                        appendMessageToChatWindow(msg.content, msg.isMine, msg.sentAt);
+                    });
+                } else {
+                    // Optional: Show a friendly message if the chat is empty
+                    $('#chatWindow').append('<p class="text-center text-muted mt-4" id="emptyChatMsg">Start the conversation!</p>');
+                }
+        
+                // 3. Scroll to the most recent message
+                scrollToBottom();
+
+                // 4. Refresh the sidebar to clear the red unread badge
+                loadConversations();
+            });
+        }
+    </script>
+}

@@ -14,6 +14,7 @@ opts.UseSqlServer(builder.Configuration.GetConnectionString("database")));
 builder.Services.AddIdentity<AppUser, AppRole>()
     .AddEntityFrameworkStores<AppDbContext>();
 
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -37,6 +38,8 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
+
+app.MapHub<ChatHub>("/chatHub");
 
 EnsureDatabase.Migrate(app);
 await EnsureDatabase.SeedDefaultAccounts(app);
