@@ -78,75 +78,92 @@
         
         <!-- MEMBERS TAB -->
         <div class="tab-pane fade" id="members" role="tabpanel" aria-labelledby="members-tab">
-            <div class="col">
-                <div class="col-md-6">
-                    <div class="d-flex justify-content-between gap-3 mt-4 mb-3">
-                        <h5>List of Members</h5>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#inviteModal">
-                                <i class="bi bi-link-45deg"></i> Invite Link
-                            </button>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal"><i class="bi bi-plus-lg"></i> Add Member</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                        @foreach (var member in Model.ExistingMembers)
-                        {
-                            <div class="list-group-item list-group-item-action d-flex align-items-center p-2 border-start-0 border-end-0 border-top-0">
-                    
-                                <!-- Avatar -->
-                                <div class="avatar-circle me-3 flex-shrink-0">
-                                    @member.Initials
-                                </div>
-                    
-                                <!-- Member Name & Shield -->
-                                <div class="d-flex gap-2 align-items-center flex-grow-1 min-width-0">
-                                    <h6 class="mb-0 text-truncate">@member.MemberName</h6>
-                        
-                                    @if (member.RoleInProject == "Manager")
-                                    {
-                                        <i class="bi bi-shield-fill text-primary flex-shrink-0" title="Manager"></i>
-                                    }
-                                </div>
-
-                                <!-- Dropdown Menu -->
-                            @if (member.MemberId != Model.CurrentUserId)
-                            {
-                                <div class="dropdown flex-shrink-0">
-                                    <button class="btn btn-sm btn-link text-muted p-1" type="button" data-bs-toggle="dropdown">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                                        <li>
-                                            <form asp-action="ChangeMemberRole" method="post">
-                                                <input type="hidden" name="projectId" value="@Model.ProjectId" />
-                                                <input type="hidden" name="memberId" value="@member.MemberId" />
-                                                <input type="hidden" name="newRole" value="@(member.RoleInProject == "Manager" ? "Member" : "Manager")" />
-                                                <button type="submit" class="dropdown-item btn-sm text-sm">
-                                                    @(        member.RoleInProject == "Manager" ? "Demote to Member" : "Promote to Manager")
-                                                </button>
-                                            </form>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <form asp-action="RemoveMember" method="post">
-                                                <input type="hidden" name="projectId" value="@Model.ProjectId" />
-                                                <input type="hidden" name="memberId" value="@member.MemberId" />
-                                                <button type="submit" class="dropdown-item text-danger btn-sm text-sm">Remove Member</button>
-                                            </form>
-                                        </li>
-                                    </ul>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="flex-shrink-0" style="width: 28px;"></div>
-                            }
-                        </div>
-                        }
+            <div class="d-flex justify-content-between gap-3 mt-4 mb-3">
+                <h5>List of Members</h5>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#inviteModal">
+                        <i class="bi bi-link-45deg"></i> Invite Link
+                    </button>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMemberModal"><i class="bi bi-plus-lg"></i> Add Member</button>
                 </div>
             </div>
+
+            <!-- Members table -->
+            <table class="table align-middle">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>Name</th>
+                        <th>Current Assignee</th>
+                        <th>Project Role</th>
+                        <th>Online</th>
+                        <th style="width: 80px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var member in Model.ExistingMembers)
+                    {
+                        <tr>
+                            <td class="d-flex align-items-center p-2">
+                                <div class="avatar-circle me-3">
+                                    @member.Initials
+                                </div>
+                                <div class="text-truncate d-flex align-items-center">
+                                    @member.MemberName
+                                </div>
+                            </td>
+                            <td>2 Tickets</td>
+                            <td>@member.RoleInProject</td>
+                            <td>
+                                <span id="status-users-@member.MemberUserId" class="badge @(member.IsOnline ? "bg-success" : "bg-secondary")">
+                                    @(member.IsOnline ? "Online" : "Offline")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex justify-content-end gap-3">
+                                    @if (member.MemberId != Model.CurrentUserId)
+                                    {
+                                        <a href="@Url.Action("Index", "Messages", new { targetUserId = member.MemberUserId, targetUserName = member.MemberName })"
+                                               class="text-sm text-secondary"
+                                               title="Message User">
+                                            <i class="bi bi-chat-left-text fs-5"></i>
+                                        </a>
+                                        <div class="dropdown flex-shrink-0">
+                                            <button class="btn btn-sm btn-link text-muted p-1" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                <li>
+                                                    <form asp-action="ChangeMemberRole" method="post">
+                                                        <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                                                        <input type="hidden" name="memberId" value="@member.MemberId" />
+                                                        <input type="hidden" name="newRole" value="@(member.RoleInProject == "Manager" ? "Member" : "Manager")" />
+                                                        <button type="submit" class="dropdown-item btn-sm text-sm">
+                                                            @(        member.RoleInProject == "Manager" ? "Demote to Member" : "Promote to Manager")
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form asp-action="RemoveMember" method="post">
+                                                        <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                                                        <input type="hidden" name="memberId" value="@member.MemberId" />
+                                                        <button type="submit" class="dropdown-item text-danger btn-sm text-sm">Remove Member</button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="flex-shrink-0" style="width: 28px;"></div>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            
         </div>
         
         <!-- WORKFLOW TAB -->

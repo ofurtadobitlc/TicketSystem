@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TicketSystem.Web.Models;
 using TicketSystem.Web.Models.Account;
@@ -13,6 +14,12 @@ opts.UseSqlServer(builder.Configuration.GetConnectionString("database")));
 
 builder.Services.AddIdentity<AppUser, AppRole>()
     .AddEntityFrameworkStores<AppDbContext>();
+
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    // Default is 30 minutes. Setting it to zero forces a check on every request.
+    options.ValidationInterval = TimeSpan.Zero;
+});
 
 builder.Services.AddSignalR();
 

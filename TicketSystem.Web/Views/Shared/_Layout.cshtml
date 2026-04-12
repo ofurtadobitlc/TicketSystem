@@ -143,16 +143,36 @@
         // append the message to the chat window.
         // Otherwise, update the unread count on the conversation list.
         if (typeof handleIncomingMessage === "function") {
-        handleIncomingMessage(senderId, messageContent);
+            handleIncomingMessage(senderId, messageContent);
         }
         });
     
         connection.on("UserPresenceChanged", function (userId, isOnline) {
-        // Update the green indicator dot dynamically in the UI
-        const userElement = document.querySelector(`[data-user-id='${userId}'] .online-indicator`);
-        if (userElement) {
-        userElement.classList.toggle('bg-success', isOnline);
-        userElement.classList.toggle('bg-secondary', !isOnline);
+    
+        // Userslist
+        const statusBadge = document.getElementById(`status-users-${userId}`);
+        if (statusBadge) {
+            if (isOnline) {
+                statusBadge.classList.remove('bg-secondary');
+                statusBadge.classList.add('bg-success');
+                statusBadge.innerText = "Online";
+            } else {
+                statusBadge.classList.remove('bg-success');
+                statusBadge.classList.add('bg-secondary');
+                statusBadge.innerText = "Offline";
+            }
+        }
+
+        // Chat
+        const chatIndicator = document.querySelector(`[data-user-id='${userId}'] .online-indicator`);
+        if (chatIndicator) {
+            if (isOnline) {
+                chatIndicator.classList.remove('bg-secondary');
+                chatIndicator.classList.add('bg-success');
+            } else {
+                chatIndicator.classList.remove('bg-success');
+                chatIndicator.classList.add('bg-secondary');
+            }
         }
         });
 

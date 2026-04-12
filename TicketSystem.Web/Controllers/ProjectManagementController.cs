@@ -17,7 +17,7 @@ using TicketSystem.Web.Models.Workflow;
 
 namespace TicketSystem.Web.Controllers
 {
-    [Authorize(Roles ="Admin")]
+    [Authorize(Roles ="Admin,Manager")]
     public class ProjectManagementController : Controller
     {
         private readonly AppDbContext _context;
@@ -82,8 +82,10 @@ namespace TicketSystem.Web.Controllers
                 ExistingMembers = project.Members.Select(m => new ProjectMemberItemViewModel
                 {
                     MemberId = m.MemberId,
+                    MemberUserId = m.Member?.Id ?? string.Empty,
                     MemberName = m.Member?.Name ?? "Unknown",
                     RoleInProject = m.RoleInProject,
+                    IsOnline = ChatHub.IsUserOnline(m.Member?.Id ?? string.Empty),
                     Initials = AvatarHelper.GetInitials(m.Member?.Name ?? "Default")
                 }).ToList(),
                 AddMemberForm = new AddProjectMemberViewModel

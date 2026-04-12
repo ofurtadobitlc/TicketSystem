@@ -13,11 +13,12 @@
 </div>
 
 <!-- Users Table -->
-<table class="table table-hover align-middle shadow-sm">
+<table class="table align-middle">
         <thead class="table-secondary">
             <tr>
                 <th>Name</th>
                 <th>Username</th>
+                <th>Online</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th style="width: 80px;"></th>
@@ -37,6 +38,10 @@
                     </td>
                     <td>@item.Username</td>
                     <td>
+                        <span id="status-users-@item.Id" class="badge @(item.IsOnline ? "bg-success" : "bg-secondary")">
+                            @(item.IsOnline ? "Online" : "Offline")
+                        </span>
+                    <td>
                         <span class="badge bg-secondary">@item.RoleName</span>
                     </td>
                     <td>
@@ -45,7 +50,15 @@
                         </span>
                     </td>
                     <td>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex justify-content-end gap-3">
+                            @if (item.Id != ViewBag.CurrentUserId)
+                            {
+                                <a href="@Url.Action("Index", "Messages", new { targetUserId = item.Id, targetUserName = item.Name })"
+                                       class="text-sm text-secondary"
+                                       title="Message User">
+                                    <i class="bi bi-chat-left-text fs-5"></i>
+                                </a>
+                            }
                             <a asp-action="Details" asp-route-id="@item.Id" class="text-sm text-secondary" title="View Details">
                                 <i class="bi bi-eye-fill fs-5"></i>
                             </a>
@@ -220,5 +233,10 @@
             var modal = new bootstrap.Modal(document.getElementById('editUserModal'));
             modal.show();
         });
+    </script>
+}
+
+@section Scripts {
+    <script>
     </script>
 }

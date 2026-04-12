@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Principal;
 
 namespace TicketSystem.Web.Models.ProjectManagement
 {
@@ -32,9 +33,18 @@ namespace TicketSystem.Web.Models.ProjectManagement
     public class ProjectMemberItemViewModel
     {
         public string MemberId { get; set; } = string.Empty;
+        public string MemberUserId { get; set; } = string.Empty;
         public string MemberName { get; set; } = string.Empty;
         public string RoleInProject { get; set; } = string.Empty;
         public string Initials { get; set; } = string.Empty;
+
+        public List<MemberTicketsViewModel> TicketsAssigned = new();
+        public bool IsOnline { get; set; }
+    }
+
+    public class MemberTicketsViewModel
+    {
+        public int MyProperty { get; set; }
     }
 
     public class AddProjectMemberViewModel

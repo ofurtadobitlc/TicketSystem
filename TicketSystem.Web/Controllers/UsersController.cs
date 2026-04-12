@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 using TicketSystem.Web.Models;
@@ -15,10 +16,12 @@ namespace TicketSystem.Web.Controllers
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<AppRole> _roleManager;
-        public UsersController(UserManager<AppUser> userManager, RoleManager<AppRole> roleManager)
+        private readonly IHubContext<ChatHub> _hubContext;
+        public UsersController(UserManager<AppUser> userManager, RoleManager<AppRole> roleManager, IHubContext<ChatHub> hubContext)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _hubContext = hubContext;
         }
         // GET: Users
         public async Task<IActionResult> Index()
@@ -65,6 +68,7 @@ namespace TicketSystem.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+
         // POST: Users/ToggleStatus
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -76,16 +80,22 @@ namespace TicketSystem.Web.Controllers
                 return NotFound();
             }
 
-            // Impede que o Admin se desative acidentalmente
             var currentUser = await _userManager.GetUserAsync(User);
             if (user.Id == currentUser.Id)
             {
-                TempData["ErrorMessage"] = "Você não pode inativar o seu próprio usuário.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Alterna o estado
+            // 1. Toggle status
             user.IsActive = !user.IsActive;
+
+            // 2. If the user is being inactivated, invalidate their current session
+            if (!user.IsActive)
+            {
+                // This forces the cookie to become invalid
+                await _userManager.UpdateSecurityStampAsync(user);
+            }
+
             await _userManager.UpdateAsync(user);
 
             return RedirectToAction(nameof(Index));
@@ -230,6 +240,7 @@ namespace TicketSystem.Web.Controllers
                     Id = user.Id,
                     Name = user.Name,
                     Initials = AvatarHelper.GetInitials(user.Name ?? "Default"),
+                    IsOnline = ChatHub.IsUserOnline(user.Id),
                     Username = user.UserName ?? "Unknown",
                     RoleName = roles.FirstOrDefault() ?? "Without role",
                     IsActive = user.IsActive

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using TicketSystem.Web.Models;
@@ -7,6 +8,7 @@ using TicketSystem.Web.Models.ProjectManagement;
 
 namespace TicketSystem.Web.Controllers
 {
+    [Authorize]
     public class ProjectController : Controller
     {
         private readonly AppDbContext _context;

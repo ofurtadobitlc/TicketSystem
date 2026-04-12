@@ -27,7 +27,7 @@ namespace TicketSystem.Web.Models
                     // If this is their FIRST connection, tell everyone they are online
                     if (connections.Count == 1)
                     {
-                        Clients.Others.SendAsync("UserPresenceChanged", userId, true);
+                        Clients.All.SendAsync("UserPresenceChanged", userId, true);
                     }
                 }
             }
@@ -49,7 +49,7 @@ namespace TicketSystem.Web.Models
                     if (connections.Count == 0)
                     {
                         UserConnections.TryRemove(userId, out _);
-                        Clients.Others.SendAsync("UserPresenceChanged", userId, false);
+                        Clients.All.SendAsync("UserPresenceChanged", userId, false);
                     }
                 }
             }

@@ -6,6 +6,7 @@ using TicketSystem.Web.Models;
 
 namespace TicketSystem.Web.Controllers;
 
+
 public class HomeController : Controller
 {
 

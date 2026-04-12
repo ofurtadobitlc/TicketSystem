@@ -20,6 +20,7 @@ namespace TicketSystem.Web.Models.Users
         public string Initials { get; set; }
         public string Username { get; set; }
         public string RoleName { get; set; }
+        public bool IsOnline { get; set; }
         public bool IsActive { get; set; }
     }
 

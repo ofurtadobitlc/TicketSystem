@@ -73,6 +73,15 @@
             // 1. ON PAGE LOAD: Populate the sidebar immediately
             loadConversations();
 
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetUserId = urlParams.get('targetUserId');
+            const targetUserName = urlParams.get('targetUserName');
+
+            if (targetUserId && targetUserName) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                loadChat(targetUserId, targetUserName);
+            }
+
             // Fetch and load users when the "New Conversation" modal opens
             $('#newChatModal').on('show.bs.modal', function () {
                 loadUsersForNewChat();
@@ -248,10 +257,12 @@
             const time = sentAtTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const alignmentClass = isMine ? 'sent' : 'received';
 
+            const formattedContent = formatMessageContent(content);
+
             const html = `
                 <div class="message-wrapper ${alignmentClass}">
                     <div class="chat-bubble">
-                        <div>${content}</div>
+                        <div>${formattedContent}</div>
                         <span class="chat-timestamp">${time}</span>
                     </div>
                 </div>
@@ -291,6 +302,23 @@
 
                 // 4. Refresh the sidebar to clear the red unread badge
                 loadConversations();
+            });
+        }
+
+        function formatMessageContent(text) {
+            if (!text) return "";
+
+            // 1. Escapar o HTML para evitar ataques XSS (Cross-Site Scripting)
+            // Isso transforma <script> em &lt;script&gt;
+            let escapedText = $('<div>').text(text).html();
+
+            const urlRegex = new RegExp('(\\b(https?|ftp|file)://[-A-Z0-9+&@@#/%?=~_|!:,.;]*[-A-Z0-9+&@@#/%=~_|])', 'ig');
+
+            // 3. Substituir a URL encontrada por uma tag <a> clicável
+            return escapedText.replace(urlRegex, function (url) {
+                // target="_blank" abre em nova aba
+                // rel="noopener noreferrer" é uma boa prática de segurança para links externos
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary text-decoration-underline">${url}</a>`;
             });
         }
     </script>

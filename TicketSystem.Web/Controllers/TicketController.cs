@@ -1,4 +1,5 @@
 ﻿using Azure.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using TicketSystem.Web.Models.Ticket.ViewModels;
 
 namespace TicketSystem.Web.Controllers
 {
+    [Authorize]
     public class TicketController : Controller
     {
         private readonly AppDbContext _context;
