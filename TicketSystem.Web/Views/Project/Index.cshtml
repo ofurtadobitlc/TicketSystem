@@ -2,61 +2,71 @@
 @model IEnumerable<ProjectListViewModel>
 
     
-    <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
-        <h2>Projects</h2>
-        <a asp-action="Create" class="btn btn-success">New Project</a>
-    </div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
-    }
-    <hr class="my-4" />
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-        @foreach (var item in Model)
-        {
-            int progress = item.TotalTickets > 0
-                ? ((item.TotalTickets - item.OpenTickets) * 100) / item.TotalTickets
-                : 0;
+    <h2>Projects</h2>
+    <ul class="nav nav-tabs mt-3 mb-4" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab" aria-controls="all" aria-selected="true">All Projects</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="member-tab" data-bs-toggle="tab" data-bs-target="#member" type="button" role="tab" aria-controls="member" aria-selected="false">
+                I am member
+            </button>
+        </li>
+    </ul>
+    <div class="tab-content mt-3" id="myTabContent">
+        <div class="tab-pane fade show active" id="all" role="tabpanel" aria-labelledby="all-tab">
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+            @foreach (var item in Model)
+            {
+                int progress = item.TotalTickets > 0
+                    ? ((item.TotalTickets - item.OpenTickets) * 100) / item.TotalTickets
+                    : 0;
 
-            <div class="col">
-                <div class="card h-100 shadow-sm bg-light-subtle">
-                    <div class="card-body">
-                        <div class="d-flex mb-2">
-                            @if (item.EndDate.HasValue)
-                            {
-                                <span class="badge bg-success">Finished</span>
-                            }
-                        </div>
-                        <h5 class="card-title fw-bold">@item.Title</h5>
-                        <p class="card-text text-muted small">@item.DescriptionSnippet</p>
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span>Tickets Closed</span>
-                                <span>@progress%</span>
+                <div class="col">
+                    <div class="card h-100 shadow-sm bg-light-subtle">
+                        <div class="card-body">
+                            <div class="d-flex mb-2">
+                                @if (item.EndDate.HasValue)
+                                {
+                                    <span class="badge bg-success">Finished</span>
+                                }
                             </div>
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar" role="progressbar" style="width: @progress%" aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"></div>
+                            <h5 class="card-title fw-bold">@item.Title</h5>
+                            <p class="card-text text-muted small">@item.DescriptionSnippet</p>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>Tickets Closed</span>
+                                    <span>@progress%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar" role="progressbar" style="width: @(progress)%" aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between align-items-center">
-                    <small class="text-muted">Start: @item.StartDate.ToShortDateString()</small>
+                        <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between align-items-center">
+                            <small class="text-muted">Start: @item.StartDate.ToShortDateString()</small>
     
-                        <div class="d-flex gap-2">
-                            @if (User.IsInRole("Admin") && item.EndDate.HasValue)
-                            {
-                                <form asp-action="Delete" asp-route-id="@item.Id" method="post"
-                                      onsubmit="return confirm('Tem a certeza que deseja apagar este projeto? Esta ação removerá o projeto da lista.');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Apagar Projeto">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            }
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Details</a>
+                            <div class="d-flex gap-2">
+                                @if (User.IsInRole("Admin") && item.EndDate.HasValue)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post"
+                                          onsubmit="return confirm('Tem a certeza que deseja apagar este projeto? Esta ação removerá o projeto da lista.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Apagar Projeto">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-success">Details</a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        }
+            }
+        </div>
+        </div>
+        <div class="tab-pane fade" id="member" role="tabpanel" aria-labelledby="member-tab">
+            <h5> Here are the Projects I am Member</h5>
+        </div>
     </div>
+    

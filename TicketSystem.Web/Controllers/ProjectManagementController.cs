@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Build.Evaluation;
+using Microsoft.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -17,7 +20,7 @@ using TicketSystem.Web.Models.Workflow;
 
 namespace TicketSystem.Web.Controllers
 {
-    [Authorize(Roles ="Admin,Manager")]
+    [Authorize]
     public class ProjectManagementController : Controller
     {
         private readonly AppDbContext _context;
@@ -28,6 +31,7 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Project
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Index()
         {
             var viewModel = await BuildViewModelAsync();
@@ -35,6 +39,7 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Project/Details/5
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -61,7 +66,7 @@ namespace TicketSystem.Web.Controllers
 
             var availableRoles = new List<SelectListItem>
             {
-                new SelectListItem { Value = "Manager", Text = "Manager" },
+                new SelectListItem { Value = "Moderator", Text = "Moderator" },
                 new SelectListItem { Value = "Member", Text = "Member" }
             };
 
@@ -77,7 +82,8 @@ namespace TicketSystem.Web.Controllers
                 EndDate = project.EndDate,
                 TotalTickets = project.Tickets?.Count() ?? 0,
                 TotalOpenedTickets = project.Tickets?.Count(t => t.CurrentStatus != "Closed") ?? 0,
-
+                CanFinishProject = CanFinishProject(currentUserId, project),
+                CanChangeProject = CanChangeProject(currentUserId, project),
                 // Members
                 ExistingMembers = project.Members.Select(m => new ProjectMemberItemViewModel
                 {
@@ -88,6 +94,7 @@ namespace TicketSystem.Web.Controllers
                     IsOnline = ChatHub.IsUserOnline(m.Member?.Id ?? string.Empty),
                     Initials = AvatarHelper.GetInitials(m.Member?.Name ?? "Default")
                 }).ToList(),
+                CanChangeMember = CanChangeMember(currentUserId, project),
                 AddMemberForm = new AddProjectMemberViewModel
                 {
                     ProjectId = project.Id,
@@ -172,6 +179,7 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Project/Edit/5
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Edit(int? id)
         {
             var project = await _context.Projects.FindAsync(id);
@@ -195,6 +203,7 @@ namespace TicketSystem.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Edit(int id, EditProjectVM editForm)
         {
             if (id != editForm.Id) return NotFound();
@@ -231,6 +240,7 @@ namespace TicketSystem.Web.Controllers
         }
 
         // GET: Project/Delete/5
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -252,6 +262,7 @@ namespace TicketSystem.Web.Controllers
         // POST: Project/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var projectModel = await _context.Projects.FindAsync(id);
@@ -265,10 +276,39 @@ namespace TicketSystem.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Finish(int id)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var project = await _context.Projects.Include(p => p.Tickets).Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == id);
+            if (project == null) return NotFound();
+
+            if (project.EndDate.HasValue)
+            {
+                return RedirectToAction(nameof(Details), new { id = project.Id });
+            }
+
+            if (!CanFinishProject(currentUserId!, project))
+            {
+                return RedirectToAction(nameof(Details), new { id = project.Id });
+            }
+
+            project.EndDate = DateOnly.FromDateTime(DateTime.Today);
+            _context.Projects.Update(project);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Details), new { id = project.Id });
+
+        }
+
         private bool ProjectModelExists(int id)
         {
             return _context.Projects.Any(e => e.Id == id);
         }
+
+
 
 
         // --- POST ACTIONS FOR TABS ---
@@ -276,21 +316,34 @@ namespace TicketSystem.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddMember(AddProjectMemberViewModel model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var newMember = new ProjectMember
-                {
-                    ProjectId = model.ProjectId,
-                    MemberId = model.SelectedUserId,
-                    RoleInProject = model.SelectedRole
-                };
-
-                _context.ProjectMembers.Add(newMember);
-                await _context.SaveChangesAsync();
-
                 return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "members");
             }
+
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == model.ProjectId);
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (project == null) return NotFound();
+
+            if (!CanChangeMember(currentUserId!, project))
+            {
+                return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "members");
+            }
+
+
+            var newMember = new ProjectMember
+            {
+                ProjectId = model.ProjectId,
+                MemberId = model.SelectedUserId,
+                RoleInProject = model.SelectedRole
+            };
+
+            _context.ProjectMembers.Add(newMember);
+            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "members");
+            
         }
 
         [HttpPost]
@@ -300,6 +353,16 @@ namespace TicketSystem.Web.Controllers
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (memberId == currentUserId)
+            {
+                return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
+            }
+
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+
+            if (!CanChangeMember(currentUserId!, project))
             {
                 return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
             }
@@ -328,6 +391,16 @@ namespace TicketSystem.Web.Controllers
                 return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
             }
 
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+
+            if (!CanChangeMember(currentUserId!, project))
+            {
+                return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
+            }
+
             var member = await _context.ProjectMembers
                 .FirstOrDefaultAsync(m => m.ProjectId == projectId && m.MemberId == memberId);
 
@@ -340,6 +413,8 @@ namespace TicketSystem.Web.Controllers
         }
 
 
+
+        // TODO: CanChangeMember
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> GenerateInviteLink(int projectId)
@@ -363,6 +438,7 @@ namespace TicketSystem.Web.Controllers
 
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> JoinProject(Guid token)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -400,6 +476,7 @@ namespace TicketSystem.Web.Controllers
         }
 
 
+        // TODO: CanChangeProject
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddWorkflowStatus(AddWorkflowStatusViewModel model)
@@ -422,7 +499,7 @@ namespace TicketSystem.Web.Controllers
             return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "workflow");
         }
 
-
+        // TODO: CanChangeProject
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveWorkflowStatus(int projectId, int statusId)
@@ -441,6 +518,7 @@ namespace TicketSystem.Web.Controllers
         }
 
 
+        // TODO: CanChangeProject
         [HttpPost]
         // Note: When sending JSON via JS fetch, [FromBody] is required to parse the payload.
         // We omit [ValidateAntiForgeryToken] here unless you explicitly configure your JS fetch to send the token in a custom header (like 'RequestVerificationToken').
@@ -474,6 +552,31 @@ namespace TicketSystem.Web.Controllers
 
             // Return an HTTP 200 OK result because this was called via AJAX (no page reload)
             return Ok(new { success = true, message = "Order updated successfully." });
+        }
+
+
+
+
+
+        // ----- PRIVATE METHODS --------------
+
+        private bool CanChangeProject(string currentUserId, ProjectModel project)
+        {
+            return !project!.EndDate.HasValue && (User.IsInRole("Admin") ||
+                        project.Members.Any(m => m.MemberId == currentUserId && (m.RoleInProject == "Manager")));
+        }
+
+        private bool CanFinishProject(string currentUserId, ProjectModel project)
+        {
+           return !project.EndDate.HasValue &&
+                       (project.Tickets?.Count(t => t.CurrentStatus != "Closed") ?? 0) == 0 && (User.IsInRole("Admin") ||
+                       project.Members.Any(m => m.MemberId == currentUserId && (m.RoleInProject == "Manager")));
+        }
+
+        private bool CanChangeMember(string currentUserId, ProjectModel project)
+        {
+            return !project.EndDate.HasValue && (User.IsInRole("Admin") ||
+                       project.Members.Any(m => m.MemberId == currentUserId && (m.RoleInProject == "Manager" || m.RoleInProject == "Moderator")));
         }
 
         private async Task<PMCreateEditViewModel> BuildViewModelAsync(

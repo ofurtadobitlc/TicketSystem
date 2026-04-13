@@ -39,45 +39,6 @@ namespace TicketSystem.Web.Controllers
             return View(projectsList);
         }
 
-        // GET: Project/Create
-        public async Task<IActionResult> Create()
-        {
-            var viewModel = new ProjectCreateViewModel
-            {
-                StartDate = DateOnly.FromDateTime(DateTime.Today), 
-                WorkflowsList = new SelectList(await _context.Workflows.ToListAsync(), "Id", "Name")
-            };
-            return View(viewModel);
-        }
-
-        // POST: Project/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ProjectCreateViewModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                var project = new ProjectModel
-                {
-                    Title = model.Title,
-                    Description = model.Description,
-                    StartDate = model.StartDate,
-                    WorkflowId = model.WorkflowId,
-                    IsDeleted = false
-                    // EndDate null by Default, set when project is closed
-                };
-
-                _context.Projects.Add(project);
-                await _context.SaveChangesAsync();
-
-                TempData["SuccessMessage"] = "Project created successfully!";
-                return RedirectToAction(nameof(Index));
-            }
-
-            model.WorkflowsList = new SelectList(await _context.Workflows.ToListAsync(), "Id", "Name", model.WorkflowId);
-            return View(model);
-        }
-
         // GET: Project/Details/5 (Kanban board)
         public async Task<IActionResult> Details(int id)
         {
@@ -122,6 +83,8 @@ namespace TicketSystem.Web.Controllers
             return View(boardViewModel);
         }
 
+
+        // TODO: MOVE TO PROJECT MANAGEMENT
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Close(int id)

@@ -16,10 +16,14 @@ namespace TicketSystem.Web.Models.ProjectManagement
         public DateOnly? EndDate { get; set; }
         public int TotalTickets { get; set; }
         public int TotalOpenedTickets { get; set; }
+        public bool CanFinishProject { get; set; }
+        public bool CanChangeProject { get; set; }
 
         // --- MEMBERS TAB ---
         public List<ProjectMemberItemViewModel> ExistingMembers { get; set; } = new();
         public AddProjectMemberViewModel AddMemberForm { get; set; } = new();
+
+        public bool CanChangeMember { get; set; }
 
         // --- WORKFLOW TAB ---
         public int WorkflowId { get; set; }
@@ -44,7 +48,8 @@ namespace TicketSystem.Web.Models.ProjectManagement
 
     public class MemberTicketsViewModel
     {
-        public int MyProperty { get; set; }
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
     }
 
     public class AddProjectMemberViewModel
