@@ -2,9 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TicketSystem.Web.Models;
 using TicketSystem.Web.Models.Project;
 using TicketSystem.Web.Models.ProjectManagement;
+using TicketSystem.Web.Models.Ticket;
 
 namespace TicketSystem.Web.Controllers
 {
@@ -23,7 +25,7 @@ namespace TicketSystem.Web.Controllers
         public async Task<IActionResult> Index()
         {
             var projectsList = await _context.Projects
-            .Where(p => !p.IsDeleted) 
+            .Where(p => !p.IsDeleted)
             .Select(p => new ProjectListViewModel
             {
                 Id = p.Id,
@@ -49,6 +51,7 @@ namespace TicketSystem.Web.Controllers
                 .ThenInclude(t => t.Assignee)
                 .Include(p => p.Tickets).ThenInclude(t => t.Comments)
                 .Include(p => p.Tickets).ThenInclude(t => t.BlockedByTickets)
+                .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (project == null) return NotFound();
@@ -73,8 +76,12 @@ namespace TicketSystem.Web.Controllers
                     CommentsCount = t.Comments.Count,
                     AttachmentsCount = t.Attachments?.Count ?? 0,
                     IsClosed = t.ClosedAt.HasValue,
-                    IsBlocked = t.BlockedByTickets.Any()
-                }).ToList()
+                    IsBlocked = t.BlockedByTickets.Any(),
+                    IsLocked = !CanChangeTicketStatus(t, project),
+                    CanAssign = CanAssignTicket(t, project)
+                }).ToList(),
+                CanCreateTicket = CanCreateTicket(project)
+                
             };
 
             boardViewModel.UsersList = new SelectList(_context.Users.ToList(), "Id", "UserName");
@@ -85,40 +92,9 @@ namespace TicketSystem.Web.Controllers
 
 
         // TODO: MOVE TO PROJECT MANAGEMENT
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Close(int id)
-        {
-            var project = await _context.Projects.FindAsync(id);
-
-            if (project == null)
-            {
-                return NotFound();
-            }
-
-            // Verifica se já não está encerrado para evitar reescrita da data
-            if (project.EndDate.HasValue)
-            {
-                TempData["ErrorMessage"] = "Este projeto já se encontra encerrado.";
-                return RedirectToAction(nameof(Details), new { id = project.Id });
-            }
-
-            // Define a data de fim como a data de hoje
-            project.EndDate = DateOnly.FromDateTime(DateTime.Today);
-
-            _context.Projects.Update(project);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = $"O projeto '{project.Title}' foi encerrado com sucesso.";
-
-            // Redireciona para a listagem (ou de volta para os detalhes, como preferir)
-            return RedirectToAction(nameof(Index));
-        }
-
         // POST: Project/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        // [Authorize(Roles = "Admin")] // Descomente se usar Roles no Identity
         public async Task<IActionResult> Delete(int id)
         {
             var project = await _context.Projects.FindAsync(id);
@@ -139,6 +115,37 @@ namespace TicketSystem.Web.Controllers
 
             TempData["SuccessMessage"] = $"The Project '{project.Title}' was successfully deleted.";
             return RedirectToAction(nameof(Index));
+        }
+
+        private bool CanChangeTicketStatus(TicketModel ticket, ProjectModel project)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!project.EndDate.HasValue && ticket.AssigneeId != null && ticket.CurrentStatus != "Closed" && !ticket.BlockedByTickets.Any() && (User.IsInRole("Admin") || project.Members.Any(pm => pm.RoleInProject == "Manager" && pm.MemberId == currentUserId) || currentUserId == ticket.CreatorId || currentUserId == ticket.AssigneeId))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool CanCreateTicket(ProjectModel project)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!project.EndDate.HasValue && (User.IsInRole("Admin") || project.Members.Any(pm => pm.MemberId == currentUserId)))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool CanAssignTicket(TicketModel ticket, ProjectModel project)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!project.EndDate.HasValue && ticket.CurrentStatus != "Closed" && (User.IsInRole("Admin") || project.Members.Any(pm => pm.RoleInProject == "Manager" && pm.MemberId == currentUserId) || currentUserId == ticket.CreatorId))
+            {
+                return true;
+            }
+            return false;
         }
     }
 }

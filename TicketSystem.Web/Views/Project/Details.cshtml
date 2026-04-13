@@ -26,9 +26,12 @@
                         Finish Project
                     </button>
                 </form> *@
-                <button type="button" class="btn btn-success btn-sm" onclick="openCreateModal()">
-                    <i class="bi bi-plus-lg"></i> New Ticket
-                </button>
+                @if (Model.CanCreateTicket)
+                {
+                    <button type="button" class="btn btn-success btn-sm" onclick="openCreateModal()">
+                        <i class="bi bi-plus-lg"></i> New Ticket
+                    </button>
+                }
             </div>
         }
     </div>
@@ -53,7 +56,7 @@
                     <div class="d-flex flex-column gap-2 flex-grow-1 dropzone">
                         @foreach (var ticket in Model.Tickets.Where(t => t.CurrentStatus == status))
                         {
-                            bool canDrag = !Model.EndDate.HasValue && !ticket.IsClosed;
+                            bool canDrag = !ticket.IsLocked;
                             <div class="card shadow-sm border-start border-1 @(ticket.IsBlocked ? "border-danger" : "border-primary") kanban-card @(canDrag ? "" : "opacity-75")"
                                  draggable="@(canDrag ? "true" : "false")"
                                  ondragstart="@(canDrag ? "drag(event)" : "return false;")"
@@ -77,13 +80,13 @@
                                                    asp-action="Details"
                                                    asp-route-id="@ticket.Id"
                                                    class="btn btn-sm btn-outline-secondary"
-                                                   title="Ver Detalhes">
+                                                   title="See Details">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                 
-                                            @if (canDrag)
+                                            @if (ticket.CanAssign)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-primary" title="Atribuir Utilizador"
+                                                <button type="button" class="btn btn-sm btn-outline-primary" title="Assign to"
                                                         onclick="openAssignModal(@ticket.Id)">
                                                     <i class="bi bi-person-plus"></i>
                                                 </button>

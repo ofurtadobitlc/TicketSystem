@@ -7,7 +7,6 @@ using Microsoft.Build.Evaluation;
 using Microsoft.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Security.Claims;
@@ -30,7 +29,7 @@ namespace TicketSystem.Web.Controllers
             _context = context;
         }
 
-        // GET: Project
+        // GET: ProjectManagement
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Index()
         {
@@ -38,8 +37,7 @@ namespace TicketSystem.Web.Controllers
             return View(viewModel);
         }
 
-        // GET: Project/Details/5
-        [Authorize(Roles = "Admin,Manager")]
+        // GET: ProjectManagement/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -178,7 +176,7 @@ namespace TicketSystem.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: Project/Edit/5
+        // GET: ProjectManagement/Edit/5
         [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Edit(int? id)
         {
@@ -362,7 +360,7 @@ namespace TicketSystem.Web.Controllers
             if (project == null) return NotFound();
 
 
-            if (!CanChangeMember(currentUserId!, project))
+            if (!CanChangeMember(currentUserId!, project, memberId))
             {
                 return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
             }
@@ -396,7 +394,7 @@ namespace TicketSystem.Web.Controllers
             if (project == null) return NotFound();
 
 
-            if (!CanChangeMember(currentUserId!, project))
+            if (!CanChangeMember(currentUserId!, project, memberId))
             {
                 return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
             }
@@ -413,14 +411,20 @@ namespace TicketSystem.Web.Controllers
         }
 
 
-
-        // TODO: CanChangeMember
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> GenerateInviteLink(int projectId)
         {
-            var project = await _context.Projects.FindAsync(projectId);
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == projectId);
+
             if (project == null) return NotFound();
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!CanChangeMember(currentUserId!, project))
+            {
+                return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "members");
+            }
 
             // Generate a new unique token if one doesn't exist, or replace the old one
             project.InviteToken = Guid.NewGuid();
@@ -438,12 +442,10 @@ namespace TicketSystem.Web.Controllers
 
 
         [HttpGet]
-        [Authorize]
         public async Task<IActionResult> JoinProject(Guid token)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (currentUserId == null) return Challenge(); // Redirect to login if not authenticated
-
+            
             var project = await _context.Projects
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.InviteToken == token);
@@ -463,7 +465,7 @@ namespace TicketSystem.Web.Controllers
                 var newMember = new ProjectMember
                 {
                     ProjectId = project.Id,
-                    MemberId = currentUserId,
+                    MemberId = currentUserId!,
                     RoleInProject = "Member"
                 };
 
@@ -476,34 +478,57 @@ namespace TicketSystem.Web.Controllers
         }
 
 
-        // TODO: CanChangeProject
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddWorkflowStatus(AddWorkflowStatusViewModel model)
         {
-            if (ModelState.IsValid)
+            if(!ModelState.IsValid)
             {
-                var newStatus = new WorkflowStatus
-                {
-                    WorkflowId = model.WorkflowId,
-                    Name = model.Name,
-                    IsInicial = model.IsInicial,
-                    IsFinal = model.IsFinal
-                };
-
-                _context.WorkflowStatuses.Add(newStatus);
-                await _context.SaveChangesAsync();
-
                 return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "workflow");
             }
+
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == model.ProjectId);
+
+            if (project == null) return NotFound();
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!CanChangeProject(currentUserId!, project))
+            {
+                return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "workflow");
+            }
+
+            var newStatus = new WorkflowStatus
+            {
+                WorkflowId = model.WorkflowId,
+                Name = model.Name,
+                IsInicial = model.IsInicial,
+                IsFinal = model.IsFinal
+            };
+
+            _context.WorkflowStatuses.Add(newStatus);
+            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Details), "ProjectManagement", new { id = model.ProjectId }, "workflow");
+            
         }
 
-        // TODO: CanChangeProject
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveWorkflowStatus(int projectId, int statusId)
         {
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!CanChangeProject(currentUserId!, project))
+            {
+                return RedirectToAction(nameof(Details), "ProjectManagement", new { id = projectId }, "workflow");
+            }
+
             var status = await _context.WorkflowStatuses.FindAsync(statusId);
 
             // SECURITY CHECK: Ensure the status exists and is NOT a locked system status
@@ -518,12 +543,19 @@ namespace TicketSystem.Web.Controllers
         }
 
 
-        // TODO: CanChangeProject
         [HttpPost]
-        // Note: When sending JSON via JS fetch, [FromBody] is required to parse the payload.
-        // We omit [ValidateAntiForgeryToken] here unless you explicitly configure your JS fetch to send the token in a custom header (like 'RequestVerificationToken').
         public async Task<IActionResult> UpdateStatusOrder([FromBody] List<StatusOrderDto> newOrder)
         {
+            var project = await _context.Projects.Include(p => p.Members).FirstOrDefaultAsync(p => p.Workflow!.Statuses.Any(s => s.Id == newOrder.First().Id));
+            if(project == null) return NotFound();
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!CanChangeProject(currentUserId!, project))
+            {
+                return Forbid();
+            }
+
             if (newOrder == null || !newOrder.Any())
             {
                 return BadRequest("No order data provided.");
@@ -555,9 +587,6 @@ namespace TicketSystem.Web.Controllers
         }
 
 
-
-
-
         // ----- PRIVATE METHODS --------------
 
         private bool CanChangeProject(string currentUserId, ProjectModel project)
@@ -573,9 +602,11 @@ namespace TicketSystem.Web.Controllers
                        project.Members.Any(m => m.MemberId == currentUserId && (m.RoleInProject == "Manager")));
         }
 
-        private bool CanChangeMember(string currentUserId, ProjectModel project)
+        private bool CanChangeMember(string currentUserId, ProjectModel project, string memberId = "")
         {
-            return !project.EndDate.HasValue && (User.IsInRole("Admin") ||
+            bool isAffectedMemberManager = project.Members.Any(m => m.MemberId == memberId && m.RoleInProject == "Manager");
+
+            return !project.EndDate.HasValue && !isAffectedMemberManager && (User.IsInRole("Admin") ||
                        project.Members.Any(m => m.MemberId == currentUserId && (m.RoleInProject == "Manager" || m.RoleInProject == "Moderator")));
         }
 

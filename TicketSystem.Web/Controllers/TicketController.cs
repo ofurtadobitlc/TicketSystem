@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Net.Sockets;
 using System.Security.Claims;
 using TicketSystem.Web.Models;
+using TicketSystem.Web.Models.ProjectManagement;
 using TicketSystem.Web.Models.Ticket;
 using TicketSystem.Web.Models.Ticket.ViewModels;
 
@@ -41,8 +42,8 @@ namespace TicketSystem.Web.Controllers
                 {
                     Id = t.Id,
                     Title = t.Title,
-                    Project = t.Project != null ? t.Project.Title : "No Project",
-                    CreatedBy = t.CreatedBy != null ? t.CreatedBy.UserName! : "Unknown",
+                    Project = t.Project!.Title,
+                    CreatedBy = t.CreatedBy!.UserName!,
                     CreatedAt = DateOnly.FromDateTime(t.CreatedAt),
                     Assignee = t.Assignee != null ? t.Assignee.UserName! : "Not Assigned",
                     CurrentStatus = t.CurrentStatus,
@@ -274,6 +275,7 @@ namespace TicketSystem.Web.Controllers
         // CREATE PARTIAL: Fetches the Create Form to put inside the Modal
         public async Task<IActionResult> CreatePartial()
         {
+
             var model = new TicketCreateViewModel
             {
                 // Populate dropdowns for the modal
@@ -602,6 +604,8 @@ namespace TicketSystem.Web.Controllers
             return PartialView("_AssignTicketModalPartial", viewModel);
         }
 
+
+        // ------- PRIVATE METHOD ---------------
         private bool TicketModelExists(int id)
         {
             return _context.Tickets.Any(e => e.Id == id);
@@ -688,5 +692,38 @@ namespace TicketSystem.Web.Controllers
             }
             return false;
         }
+
+
+        private bool CanChangeTicket(TicketModel ticket, ProjectModel project)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!project.EndDate.HasValue && ticket.AssigneeId != null && ticket.CurrentStatus != "Closed" && !ticket.BlockedByTickets.Any() && (User.IsInRole("Admin") || project.Members.Any(pm => pm.RoleInProject == "Manager" && pm.MemberId == currentUserId) || currentUserId == ticket.CreatorId || currentUserId == ticket.AssigneeId))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool CanCreateTicket(ProjectModel project)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!project.EndDate.HasValue && (User.IsInRole("Admin") || project.Members.Any(pm => pm.MemberId == currentUserId)))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool CanAssignTicket(TicketModel ticket, ProjectModel project)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!project.EndDate.HasValue && ticket.CurrentStatus != "Closed" && (User.IsInRole("Admin") || project.Members.Any(pm => pm.RoleInProject == "Manager" && pm.MemberId == currentUserId) || currentUserId == ticket.CreatorId))
+            {
+                return true;
+            }
+            return false;
+        }
+
     }
 }

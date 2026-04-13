@@ -8,6 +8,8 @@ namespace TicketSystem.Web.Models.Project
         public string ProjectTitle { get; set; } = string.Empty;
         public string WorkflowName { get; set; } = string.Empty;
 
+        public bool CanCreateTicket { get; set; }
+
         public DateOnly? EndDate { get; set; }
 
         // Lista com os nomes dos status do Workflow (ex: "To Do", "In Progress", "Done")
@@ -22,10 +24,13 @@ namespace TicketSystem.Web.Models.Project
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string CurrentStatus { get; set; } = string.Empty;
-        public string? AssigneeName { get; set; } // Nome do responsável, se houver
+        public string? AssigneeName { get; set; } 
         public int CommentsCount { get; set; }
         public int AttachmentsCount { get; set; }
-        public bool IsBlocked { get; set; } // Calculado se BlockedByTickets.Any()
+        public bool IsBlocked { get; set; } 
+        public bool IsLocked { get; set; }
+
+        public bool CanAssign { get; set; }
         public bool IsClosed { get; set; }
     }
 }
