@@ -18,8 +18,8 @@
 
     <main class="d-flex flex-nowrap w-100">
         
-        <aside class="d-flex flex-column flex-shrink-0 p-3 bg-body-tertiary" id="sidebar" style="width: 280px;">
-            <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-body-emphasis text-decoration-none">
+        <aside class="d-flex flex-column flex-shrink-0 p-3 bg-body-tertiary no-transition" id="sidebar">
+            <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto link-body-emphasis text-decoration-none justify-content-start">
                 <i class="bi bi-kanban pe-none me-2 fs-3 text-primary"></i>
                 <span class="fs-4 brand-text">Ticket System</span>
             </a>
@@ -72,9 +72,12 @@
             <hr />
 
             <div class="dropdown">
-                <a href="#" class="d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle w-100" data-bs-toggle="dropdown" aria-expanded="false">
+                <a href="#" class="d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle w-100"
+                       data-bs-toggle="dropdown"
+                       data-bs-boundary="viewport"
+                       aria-expanded="false">
                     <div class="avatar-circle me-2">@(!string.IsNullOrEmpty(User?.Identity?.Name) ? User?.Identity?.Name.Substring(0, 1).ToUpper() : "U")</div>
-                    <strong class="sidebar-text text-truncate" style="max-width: 150px;">@(User?.Identity?.Name ?? "User")</strong>
+                    <strong class="sidebar-text text-truncate">@(User?.Identity?.Name ?? "User")</strong>
                 </a>
                 <ul class="dropdown-menu text-small shadow">
                     <li><h6 class="dropdown-header">Hello, @User?.Identity?.Name</h6></li>

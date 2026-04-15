@@ -13,10 +13,27 @@ document.addEventListener("DOMContentLoaded", function () {
     const sidebarToggle = document.getElementById("sidebarToggle");
     const sidebar = document.getElementById("sidebar");
 
-    if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener("click", function () {
-            sidebar.classList.toggle("collapsed");
-        });
+
+    if (sidebar) {
+
+        const sidebarState = localStorage.getItem('sidebarState');
+        if (sidebarState === 'collapsed') {
+            sidebar.classList.add('collapsed');
+        }
+
+        setTimeout(() => {
+            sidebar.classList.remove('no-transition');
+        }, 100);
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener("click", function () {
+                sidebar.classList.remove('no-transition');
+                sidebar.classList.toggle("collapsed");
+
+                const isCollapsed = sidebar.classList.contains("collapsed");
+                localStorage.setItem('sidebarState', isCollapsed ? 'collapsed' : 'expanded');
+            });
+        }
     }
 
     // ==========================================
