@@ -4,13 +4,13 @@
 
 <table align="center">
   <tr>
-    <td><img src="docs/startseite.jpg" width="250px"><br><sub>Startseite</sub></td>
-    <td><img src="docs/meerseite.jpg" width="250px"><br><sub>Meerseite</sub></td>
-    <td><img src="docs/tiereseite.jpg" width="250px"><br><sub>Tiereseite</sub></td>
+    <td><img src="Docs/login.png" width="250px"><br><sub>Login</sub></td>
+    <td><img src="Docs/projects.png" width="250px"><br><sub>Projekte</sub></td>
+    <td><img src="Docs/projects1.png" width="250px"><br><sub>Projekte</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/vergleichseite.jpg" width="250px"><br><sub>Vergleichseite</sub></td>
-    <td><img src="docs/quizseite.jpg" width="250px"><br><sub>Quizseite</sub></td>
-    <td></td>
+    <td><img src="docs/tickets.png" width="250px"><br><sub>Tickets</sub></td>
+    <td><img src="docs/manageusers.png" width="250px"><br><sub>Benutzerverwaltung</sub></td>
+    <td><img src="docs/chat.png" width="250px"><br><sub>Nachrichten</sub></td>
   </tr>
 </table>
